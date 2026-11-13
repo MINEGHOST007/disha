@@ -1,6 +1,17 @@
 # Disha
 
-A sandbox prototype of a proactive copilot for a kirana shop. It demonstrates a deterministic 90-day ledger, 30-customer cohort, 15-SKU catalog, a three-card daily briefing, and merchant-approved demo actions. The interface is intentionally labelled **Sandbox data** and does not connect to Paytm, WhatsApp, or a live merchant system.
+A proactive copilot for a kirana shop. The deterministic engines remain the source of truth for every number, while the LLM only narrates verified facts. The interface is intentionally labelled **Sandbox data** until live merchant adapters are configured.
+
+## AI provider configuration
+
+The server supports provider factories so the app can switch providers without changing routes:
+
+- LLM: `LLM_PROVIDER=gateway` (default) or `LLM_PROVIDER=openrouter`, with `GATEWAY_MODEL` or `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`.
+- TTS: `TTS_PROVIDER=elevenlabs` with `ELEVENLABS_API_KEY`/`ELEVENLABS_VOICE_ID`, or `TTS_PROVIDER=sarvam` with `SARVAM_API_KEY` and optional `SARVAM_SPEAKER`.
+- `POST /api/narrate` uses the selected LLM and keeps deterministic validation plus fallback text.
+- `POST /api/tts` accepts `{ "text": "...", "language": "en" | "te" }` and returns audio from the selected TTS provider.
+
+Provider keys are server-only. If an optional provider is not configured, narration falls back safely and TTS returns a clear 503 instead of pretending audio was generated.
 
 ## Run locally
 

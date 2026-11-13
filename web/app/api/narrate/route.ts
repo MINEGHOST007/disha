@@ -5,6 +5,7 @@ import { validateNarration } from "@/lib/engines";
 import { getBriefingCard } from "@/lib/disha/briefing";
 import { apiErrorResponse, DishaApiError, readJson } from "@/lib/disha/http";
 import { getDashboardSnapshot } from "@/lib/disha/store";
+import { generateOpenRouterText, selectedLlmProvider } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,15 +76,17 @@ export async function POST(request: Request) {
     if (!card) throw new DishaApiError("That briefing card could not be found.", 404);
 
     try {
-      const result = await generateText({
-        model: "google/gemini-3.8-flash",
-        instructions,
-        output: Output.object({ schema: outputSchema }),
-        prompt: JSON.stringify({ language: parsed.data.language, facts: card.facts }),
-        timeout: { totalMs: 3000 },
-        maxOutputTokens: 120,
-      });
-      const narration = result.output.narration.trim();
+      const prompt = JSON.stringify({ language: parsed.data.language, facts: card.facts });
+      const narration = selectedLlmProvider() === "openrouter"
+        ? outputSchema.parse(JSON.parse((await generateOpenRouterText({ system: instructions, prompt })) ?? "{}" )).narration.trim()
+        : (await generateText({
+            model: process.env.GATEWAY_MODEL ?? "google/gemini-3.8-flash",
+            instructions,
+            output: Output.object({ schema: outputSchema }),
+            prompt,
+            timeout: { totalMs: 3000 },
+            maxOutputTokens: 120,
+          })).output.narration.trim();
       if (validateNarration(narration, card.facts).valid && !includesForbiddenPhrase(narration)) {
         return NextResponse.json({ cardId: card.id, narration, fallbackUsed: false }, {
           headers: { "Cache-Control": "no-store" },
