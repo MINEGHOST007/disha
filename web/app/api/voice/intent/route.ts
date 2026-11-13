@@ -3,12 +3,14 @@ import { classifyIntent, parseStockChange } from "@/lib/agent";
 import { apiErrorResponse, readJson, DishaApiError } from "@/lib/disha/http";
 import { createProposal, getDashboardSnapshot, recordAuditEvent } from "@/lib/disha/store";
 import { demoGheeUnitsSold28Days, getCustomerSegments, predictStockout } from "@/lib/engines";
+import { requireRole } from "@/lib/supabase/authz";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const workspace = await requireRole();
     const body = await readJson(request);
     const transcript = typeof body?.transcript === "string" ? body.transcript.trim() : "";
     const language = body?.language === "te" ? "te" : "en";
@@ -17,11 +19,11 @@ export async function POST(request: Request) {
     }
 
     const intent = classifyIntent(transcript);
-    const snapshot = await getDashboardSnapshot();
+    const snapshot = await getDashboardSnapshot(workspace.merchantId);
     let storageAvailable = snapshot.storageAvailable;
     if (storageAvailable) {
       try {
-        await recordAuditEvent("voice_intent", { intent });
+        await recordAuditEvent(workspace.merchantId, "voice_intent", { intent });
       } catch {
         storageAvailable = false;
       }
@@ -43,13 +45,14 @@ export async function POST(request: Request) {
     } else if (intent === "TODAY_PRIORITIES") {
       answer = language === "te" ? "ఈ రోజు మూడు ముఖ్యమైన పనులు సిద్ధంగా ఉన్నాయి." : "Your three priorities are ready for review.";
     } else if (intent === "STOCK_UPDATE") {
+      if (workspace.role === "staff") throw new DishaApiError("A manager must prepare stock-change proposals.", 403);
       const qtyChange = parseStockChange(transcript, state.onHand);
       if (qtyChange === null) throw new DishaApiError("Say a whole-number stock change, then review the proposal.", 400);
       if (qtyChange === 0) {
         answer = language === "te" ? `స్టాక్ ఇప్పటికే ${state.onHand} జార్లుగా ఉంది.` : `Stock is already at ${state.onHand} jars.`;
       } else {
         if (!storageAvailable) throw new DishaApiError("Offline demo cannot save a stock proposal.", 503);
-        proposal = await createProposal("stock_update", language, qtyChange);
+        proposal = await createProposal(workspace.merchantId, "stock_update", language, qtyChange);
         answer = language === "te" ? "స్టాక్ మార్పు సిద్ధం. సేవ్ చేయడానికి ముందు ఆమోదించండి." : "Stock change prepared. Approve it before the sandbox count changes.";
       }
     } else if (intent === "APPROVE") {

@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    await requireRole("manager");
+    const workspace = await requireRole("manager");
     const body = await readJson(request);
     const language = body?.language === "te" ? "te" : "en";
     const messageText = typeof body?.messageText === "string" ? body.messageText : undefined;
-    const proposal = await approveProposal(params.id, language, messageText);
+    const proposal = await approveProposal(workspace.merchantId, params.id, language, messageText);
     return NextResponse.json(proposal, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiErrorResponse(error);

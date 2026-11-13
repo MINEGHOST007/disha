@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { Database, Json } from "@/lib/supabase/database";
 import { createReorderDraft, demoGheeUnitsSold28Days, DEMO_SEED, forecastAllSkus, getAllCustomerSegments, getCustomerSegments, predictStockout, reconcileDay, reconcileSeededWindow } from "@/lib/engines";
 import { AS_OF, LEDGER_END, LEDGER_START } from "@/lib/seed";
@@ -129,31 +130,30 @@ function detailFor(tool: string, facts: Record<string, unknown>, outcome: string
   return outcome.replaceAll("_", " ") || "Sandbox event";
 }
 
-async function readStateRow() {
+async function readStateRow(merchantId: string) {
   const { data, error } = await getSupabaseAdmin()
-    .from("disha_demo_state")
-    .select("payload,audit_cursor")
-    .eq("id", "demo")
+    .from("disha_workspace_state")
+    .select("payload")
+    .eq("merchant_id", merchantId)
     .maybeSingle();
-  if (error) throw new DishaApiError("Supabase could not load the demo state.", 503);
+  if (error) throw new DishaApiError("Supabase could not load this workspace state.", 503);
   return data;
 }
 
-export async function getCurrentDemoState() {
-  const row = await readStateRow();
-  if (!row) throw new DishaApiError("The Disha demo state has not been initialized.", 503);
+export async function getCurrentDemoState(merchantId: string) {
+  const row = await readStateRow(merchantId);
+  if (!row) throw new DishaApiError("The workspace state has not been initialized.", 503);
   return normalizeState(row.payload);
 }
 
-export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
+export async function getDashboardSnapshot(merchantId: string): Promise<DashboardSnapshot> {
   try {
-    const row = await readStateRow();
+    const row = await readStateRow(merchantId);
     if (!row) throw new Error("Disha demo state is missing");
-    const cursor = Number(row.audit_cursor ?? 0);
     const { data, error } = await getSupabaseAdmin()
       .from("disha_audit_log")
       .select(auditColumns)
-      .gt("id", cursor)
+      .eq("merchant_id", merchantId)
       .order("id", { ascending: false })
       .limit(100);
     if (error) throw error;
@@ -174,31 +174,30 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   }
 }
 
-export async function listAuditLogs() {
-  const row = await readStateRow();
-  if (!row) throw new DishaApiError("The Disha demo state has not been initialized.", 503);
+export async function listAuditLogs(merchantId: string) {
   const { data, error } = await getSupabaseAdmin()
     .from("disha_audit_log")
     .select(auditColumns)
-    .gt("id", Number(row.audit_cursor ?? 0))
+    .eq("merchant_id", merchantId)
     .order("id", { ascending: false })
     .limit(100);
   if (error) throw new DishaApiError("The audit log could not be loaded.", 503);
   return (data ?? []).map((entry) => logLabel(entry as Record<string, unknown>));
 }
 
-export async function listProposals() {
+export async function listProposals(merchantId: string) {
   const { data, error } = await getSupabaseAdmin()
     .from("disha_proposals")
     .select("id,type,status,facts,reason,narration,fallback_used,created_at,resolved_at,outcome,result")
+    .eq("merchant_id", merchantId)
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new DishaApiError("Proposals could not be loaded.", 503);
   return (data ?? []) as ProposalRecord[];
 }
 
-export async function createProposal(type: ProposalType, language: "te" | "en" = "en", qtyChange?: number) {
-  const state = await getCurrentDemoState();
+export async function createProposal(merchantId: string, type: ProposalType, language: "te" | "en" = "en", qtyChange?: number) {
+  const state = await getCurrentDemoState(merchantId);
   const reconciliation = reconcileDay(state.billRecorded)[0];
   let facts: Record<string, unknown>;
   let reason: string;
@@ -266,32 +265,41 @@ export async function createProposal(type: ProposalType, language: "te" | "en" =
     reason = `Confirm the Ghee 500 ml stock change from ${state.onHand} to ${next} jars.`;
   }
 
-  const { data, error } = await getSupabaseAdmin().rpc("disha_create_proposal", {
-    p_type: type,
-    p_facts: { ...facts, requested_language: language } as Json,
-    p_reason: reason,
-    p_narration: null,
-    p_fallback_used: true,
-  });
-  if (error) throw new DishaApiError("The proposal could not be saved.", 503);
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("disha_proposals").insert({
+    merchant_id: merchantId,
+    type,
+    facts: { ...facts, requested_language: language } as Json,
+    reason,
+    narration: null,
+    fallback_used: true,
+  }).select("id,type,status,facts,reason,narration,fallback_used,created_at,resolved_at,outcome,result").single();
+  if (error || !data) throw new DishaApiError("The proposal could not be saved.", 503);
   return data as ProposalRecord;
 }
 
-export async function approveProposal(id: string, language: "te" | "en", messageText?: string) {
-  const { data, error } = await getSupabaseAdmin().rpc("disha_approve_proposal", {
+export async function approveProposal(merchantId: string, id: string, language: "te" | "en", messageText?: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("disha_resolve_workspace_proposal", {
+    p_merchant_id: merchantId,
     p_proposal_id: id,
+    p_decision: "approve",
     p_language: language,
     p_message_text: messageText ?? null,
+    p_reason: null,
   });
   if (error) throw rpcError(error.code);
-  const proposal = data as ProposalRecord;
-  if (proposal.status === "FAILED") throw new DishaApiError("The action failed. No external system was contacted.", 500);
-  return proposal;
+  return data as ProposalRecord;
 }
 
-export async function rejectProposal(id: string, reason = "Dismissed by merchant") {
-  const { data, error } = await getSupabaseAdmin().rpc("disha_reject_proposal", {
+export async function rejectProposal(merchantId: string, id: string, reason = "Dismissed by merchant") {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("disha_resolve_workspace_proposal", {
+    p_merchant_id: merchantId,
     p_proposal_id: id,
+    p_decision: "reject",
+    p_language: "en",
+    p_message_text: null,
     p_reason: reason.slice(0, 300),
   });
   if (error) throw rpcError(error.code);
@@ -304,7 +312,7 @@ function rpcError(code?: string) {
   return new DishaApiError("The sandbox could not resolve this proposal.", 503);
 }
 
-export async function updateDemoState(patch: { onHand?: number; festivalMultiplier?: number }, tool: "demo_stock_editor" | "festival_multiplier") {
+export async function updateDemoState(merchantId: string, patch: Partial<DemoState>, tool: "demo_stock_editor" | "festival_multiplier" | "reset_demo") {
   if (patch.onHand !== undefined && (!Number.isInteger(patch.onHand) || patch.onHand < 0 || patch.onHand > 10000)) {
     throw new DishaApiError("Stock must be a whole number from 0 to 10,000.", 400);
   }
@@ -312,17 +320,18 @@ export async function updateDemoState(patch: { onHand?: number; festivalMultipli
     throw new DishaApiError("Festival multiplier must be between 1.0 and 3.0.", 400);
   }
   if (!Object.keys(patch).length) throw new DishaApiError("There is no demo change to save.", 400);
-  const { data, error } = await getSupabaseAdmin().rpc("disha_update_demo_state", {
-    p_patch: patch,
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("disha_update_workspace_state", {
+    p_merchant_id: merchantId,
+    p_patch: patch as Json,
     p_tool: tool,
-    p_facts: patch as Json,
   });
-  if (error) throw new DishaApiError("The demo settings could not be saved.", 503);
+  if (error) throw new DishaApiError("The workspace settings could not be saved.", error.code === "42501" ? 403 : 503);
   return normalizeState(data);
 }
 
-export async function addDemoBill(total: number, inventoryCost: number, gheeQty: number) {
-  const state = await getCurrentDemoState();
+export async function addDemoBill(merchantId: string, total: number, inventoryCost: number, gheeQty: number) {
+  const state = await getCurrentDemoState(merchantId);
   if (!Number.isInteger(total) || total < 1 || total > 1_000_000) throw new DishaApiError("Bill total must be a whole number from 1 to 1,000,000.", 400);
   if (!Number.isInteger(inventoryCost) || inventoryCost < 0 || inventoryCost > 1_000_000) throw new DishaApiError("Inventory cost must be a whole number from 0 to 1,000,000.", 400);
   if (!Number.isInteger(gheeQty) || gheeQty < 0 || gheeQty > 100) throw new DishaApiError("Ghee quantity must be a whole number from 0 to 100.", 400);
@@ -335,22 +344,21 @@ export async function addDemoBill(total: number, inventoryCost: number, gheeQty:
     salesTotal: state.salesTotal + total,
     billCount: state.billCount + 1,
   };
-  const { data, error } = await getSupabaseAdmin().rpc("disha_update_demo_state", {
-    p_patch: patch,
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("disha_update_workspace_state", {
+    p_merchant_id: merchantId,
+    p_patch: patch as Json,
     p_tool: "demo_bill_editor",
-    p_facts: { date: bill.date, total, inventory_cost: inventoryCost, ghee_qty: gheeQty },
   });
-  if (error) throw new DishaApiError("The demo bill could not be saved.", 503);
+  if (error) throw new DishaApiError("The demo bill could not be saved.", error.code === "42501" ? 403 : 503);
   return normalizeState(data);
 }
 
-export async function resetDemo() {
-  const { data, error } = await getSupabaseAdmin().rpc("disha_reset_demo");
-  if (error) throw new DishaApiError("The demo could not be reset.", 503);
-  return normalizeState(data);
+export async function resetDemo(merchantId: string) {
+  return updateDemoState(merchantId, DEFAULT_DEMO_STATE, "reset_demo");
 }
 
-export async function recordAuditEvent(event: "dismiss_reconciliation" | "tool_refused" | "tool_ran" | "voice_intent", details: Record<string, unknown> = {}) {
+export async function recordAuditEvent(merchantId: string, event: "dismiss_reconciliation" | "tool_refused" | "tool_ran" | "voice_intent", details: Record<string, unknown> = {}) {
   const base = event === "dismiss_reconciliation"
     ? { actor: "merchant", tool: "reconcile_day", facts: { bill_number: 1048 }, decision: "dismissed", outcome: "ledger_unchanged" }
     : event === "tool_refused"
@@ -358,6 +366,7 @@ export async function recordAuditEvent(event: "dismiss_reconciliation" | "tool_r
       : event === "voice_intent"
         ? { actor: "merchant", tool: "voice_intent", facts: { intent: String(details.intent ?? "UNKNOWN") }, decision: "classified", outcome: String(details.intent ?? "UNKNOWN") }
         : { actor: "agent", tool: String(details.tool ?? "unknown"), facts: {}, decision: "ran", outcome: "ok" };
-  const { error } = await getSupabaseAdmin().from("disha_audit_log").insert(base as Database["public"]["Tables"]["disha_audit_log"]["Insert"]);
+  const supabase = await createClient();
+  const { error } = await supabase.from("disha_audit_log").insert({ ...base, merchant_id: merchantId } as Database["public"]["Tables"]["disha_audit_log"]["Insert"]);
   if (error) throw new DishaApiError("The audit event could not be saved.", 503);
 }

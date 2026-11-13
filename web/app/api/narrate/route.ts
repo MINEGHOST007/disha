@@ -5,6 +5,7 @@ import { validateNarration } from "@/lib/engines";
 import { getBriefingCard } from "@/lib/disha/briefing";
 import { apiErrorResponse, DishaApiError, readJson } from "@/lib/disha/http";
 import { getDashboardSnapshot } from "@/lib/disha/store";
+import { requireRole } from "@/lib/supabase/authz";
 import { generateOpenRouterText, selectedLlmProvider } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
@@ -71,7 +72,8 @@ export async function POST(request: Request) {
     if (!parsed.success) throw new DishaApiError("Choose a valid briefing card and language.", 400);
     if (!allowNarrationRequest(request)) throw new DishaApiError("Narration is temporarily rate limited. Try again in a minute.", 429);
 
-    const snapshot = await getDashboardSnapshot();
+    const workspace = await requireRole();
+    const snapshot = await getDashboardSnapshot(workspace.merchantId);
     const card = getBriefingCard(snapshot.state, parsed.data.cardId, parsed.data.language);
     if (!card) throw new DishaApiError("That briefing card could not be found.", 404);
 

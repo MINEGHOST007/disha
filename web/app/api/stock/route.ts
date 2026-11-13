@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    await requireRole("manager");
+    const workspace = await requireRole("manager");
     const body = await readJson(request);
     if (typeof body?.onHand !== "number" && typeof body?.festivalMultiplier !== "number") {
       throw new DishaApiError("A stock count or festival multiplier is required.", 400);
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       ...(typeof body.onHand === "number" ? { onHand: body.onHand } : {}),
       ...(typeof body.festivalMultiplier === "number" ? { festivalMultiplier: body.festivalMultiplier } : {}),
     };
-    const state = await updateDemoState(patch, body.action === "festival" ? "festival_multiplier" : "demo_stock_editor");
+    const state = await updateDemoState(workspace.merchantId, patch, body.action === "festival" ? "festival_multiplier" : "demo_stock_editor");
     return NextResponse.json({ state }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiErrorResponse(error);

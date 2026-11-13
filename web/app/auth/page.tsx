@@ -14,7 +14,7 @@ export default function AuthPage() {
   async function signInWithGoogle() {
     setBusy(true); setMessage("");
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback` } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback` } });
     if (error) { setBusy(false); setMessage("Google sign-in is unavailable. Check the Google provider configuration."); }
   }
 
@@ -23,7 +23,7 @@ export default function AuthPage() {
     const supabase = createClient();
     const result = mode === "sign-in"
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback` } });
     setBusy(false);
     if (result.error) { setMessage(mode === "sign-in" ? "Invalid email or password." : result.error.message); return; }
     if (mode === "sign-up") { setMessage("Check your email to confirm your account."); return; }

@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    await requireRole("manager");
+    const workspace = await requireRole("manager");
     const body = await readJson(request);
     const reason = typeof body?.reason === "string" ? body.reason : undefined;
-    return NextResponse.json(await rejectProposal(params.id, reason), {
+    return NextResponse.json(await rejectProposal(workspace.merchantId, params.id, reason), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

@@ -16,7 +16,8 @@ const proposalTypes = new Set<ProposalType>([
 
 export async function GET() {
   try {
-    return NextResponse.json({ proposals: await listProposals() }, {
+    const workspace = await requireRole();
+    return NextResponse.json({ proposals: await listProposals(workspace.merchantId) }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
@@ -26,14 +27,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireRole("manager");
+    const workspace = await requireRole("manager");
     const body = await readJson(request);
     if (!body || typeof body !== "object" || !proposalTypes.has(body.type)) {
       throw new DishaApiError("Choose a supported sandbox action.", 400);
     }
     const language = body.language === "te" ? "te" : "en";
     const qtyChange = typeof body.qtyChange === "number" ? body.qtyChange : undefined;
-    const proposal = await createProposal(body.type, language, qtyChange);
+    const proposal = await createProposal(workspace.merchantId, body.type, language, qtyChange);
     return NextResponse.json(proposal, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
-    await requireRole("owner");
-    const state = await resetDemo();
+    const workspace = await requireRole("owner");
+    const state = await resetDemo(workspace.merchantId);
     return NextResponse.json({ state, logs: [], cashFlow: projectCashFlow(30, state.extraBills) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiErrorResponse(error);

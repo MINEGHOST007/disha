@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readJson, apiErrorResponse, DishaApiError } from "@/lib/disha/http";
 import { synthesizeSpeech } from "@/lib/ai/providers";
+import { requireRole } from "@/lib/supabase/authz";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ const schema = z.object({ text: z.string().trim().min(1).max(1000), language: z.
 
 export async function POST(request: Request) {
   try {
+    await requireRole();
     const input = schema.safeParse(await readJson(request));
     if (!input.success) throw new DishaApiError("Provide text and a supported language.", 400);
     const audio = await synthesizeSpeech(input.data);
