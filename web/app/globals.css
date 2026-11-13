@@ -46,7 +46,7 @@ button { cursor: pointer; }
 .topbar { align-items: center; background: rgba(248,247,242,.93); border-bottom: 1px solid rgba(233,231,223,.78); display: flex; height: 65px; justify-content: space-between; padding: 0 clamp(25px, 5vw, 76px); position: sticky; top: 0; z-index: 2; backdrop-filter: blur(12px); }
 .breadcrumb { color: #818981; font-size: 11px; }.breadcrumb span { color: #c1c2bb; margin: 0 9px; }.breadcrumb strong { color: #344137; font-weight: 600; }
 .top-actions { align-items: center; display: flex; gap: 14px; }
-.sandbox-pill { align-items: center; background: #f1eddf; border: 1px solid #e9e2ce; border-radius: 20px; color: #856a36; display: inline-flex; font-size: 10px; gap: 7px; padding: 6px 10px; }
+.sandbox-pill { align-items: center; background: #f1eddf; border: 1px solid #e9e2ce; border-radius: 20px; color: #856a36; display: inline-flex; font-size: 10px; gap: 7px; padding: 6px 10px; }.sandbox-pill small { color: #a18a59; font-size: 8px; letter-spacing: .15px; }
 .sandbox-pill > span { background: #b88a3a; border-radius: 50%; height: 6px; width: 6px; }
 .language-toggle { align-items: center; background: white; border: 1px solid var(--line); border-radius: 7px; color: #536052; display: inline-flex; font-size: 10px; gap: 7px; padding: 7px 9px; }
 .toggle-caret { color: #92988e; font-size: 15px; line-height: 10px; }
