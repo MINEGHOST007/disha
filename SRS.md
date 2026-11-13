@@ -30,7 +30,7 @@ Step 6. Narration: facts JSON to Gemini to validator to template fallback (SRS s
 Step 7. Voice: Telugu and English intents, typed fallback (SRS FR-50 to FR-56).
 Step 8. Evaluation script: npm run eval prints the scorecard table (SRS section 8.2).
 Step 9. Demo hardening: reset button, offline mode, a one-command start, README with the exact demo script.
-Step 10 (only if time remains): project_cash_flow as a clearly labelled Phase 2 screen.
+Step 10: project_cash_flow as a clearly labelled Phase 2 evaluation screen.
 
 DELIVERABLES
 Working app (npm run dev and npm start), README with setup and the 60-second demo script, /data seed files, unit tests passing, npm run eval output, a short LIMITATIONS.md that lists what is simulated.
@@ -197,7 +197,7 @@ Acceptance
 FR-20
 A tool registry exposes 7 named tools with typed inputs and outputs: reconcile_day, get_customer_segments, predict_stockout, project_cash_flow, draft_whatsapp_message, create_reorder_draft, update_stock_from_voice
 P0
-Registry lists 7 tools; project_cash_flow returns a "Phase 2" stub unless FR-60 is built
+Registry lists 7 tools; project_cash_flow returns the 30-day weekday-mean forecast and its 7-day hold-out score
 FR-21
 The agent receives a signal (new bill, stock change, daily 8:00 AM run, voice command) and selects tools through a fixed routing table, not free-form LLM choice
 P0
@@ -678,13 +678,13 @@ FR-20 to FR-28, FR-50 to FR-56
 Engines calculate, LLM explains, validation layer, audit trail
 FR-34, FR-40 to FR-46, FR-30
 8
-Targets, not results; cash flow is Phase 2
+Measured sandbox results; cash-flow screen remains labelled Phase 2 evaluation
 Section 8.2, FR-60
 10
 Phase 1 MVP list
 P0 and P1 requirements
 8.4 Update the deck after you build
-• Slide 6: replace each "(option)" chip with the exact technology you used, and keep "Cash-flow projection (Phase 2)" unless FR-60 is built.
+• Slide 6: replace each "(option)" chip with the exact technology used; keep the cash-flow screen labelled "Phase 2 evaluation".
 • Slide 8: replace targets with measured sandbox results only if you ran the eval, and keep the "sandbox results" label.
 • Slide 3: confirm ₹14,296 and 62 bills match your seed output.
 • Slide 5: if a listed tool is a stub, keep it labelled as such.
@@ -698,6 +698,6 @@ Typed fallback, recording of the working flow (FR-51, FR-56)
 Venue Wi-Fi fails
 Offline mode with templates (NFR-03)
 Scope creep
-P0 first; cash flow and festival uplift stay Phase 2
+Cash flow is an evaluated Phase 2 scenario; festival multiplier defaults off and is explicitly labelled
 A judge asks about live Paytm data
 Say it is synthetic; production integration needs Paytm's access and approval

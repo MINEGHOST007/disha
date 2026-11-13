@@ -179,8 +179,8 @@ export function getAllCustomerSegments() {
   return segmentCustomers(DEMO_SEED.customers);
 }
 
-export function predictStockout(onHand = 5, unitsSold28Days = 72, leadTime = 2) {
-  return predictStockoutCore(onHand, unitsSold28Days, leadTime, AS_OF);
+export function predictStockout(onHand = 5, unitsSold28Days = 72, leadTime = 2, festivalMultiplier = 1) {
+  return predictStockoutCore(onHand, unitsSold28Days, leadTime, festivalMultiplier, AS_OF);
 }
 
 export function forecastSku(
@@ -203,8 +203,16 @@ export function forecastAllSkus(asOf = AS_OF) {
   }));
 }
 
-export function createReorderDraft(onHand = 5) {
-  const forecast = predictStockout(onHand, seededGheeUnitsSold28Days(), 2);
+export function demoGheeUnitsSold28Days(extraBills: import("./disha/types").DemoBill[] = []) {
+  const addedUnits = extraBills.reduce((total, bill) => {
+    const age = daysBetween(bill.date, AS_OF);
+    return total + (age >= 0 && age <= VELOCITY_WINDOW_DAYS ? bill.gheeQty : 0);
+  }, 0);
+  return seededGheeUnitsSold28Days() + addedUnits;
+}
+
+export function createReorderDraft(onHand = 5, festivalMultiplier = 1, unitsSold28Days = seededGheeUnitsSold28Days()) {
+  const forecast = predictStockout(onHand, unitsSold28Days, 2, festivalMultiplier);
   return { sku: "Ghee 500 ml", quantity: forecast.reorderQty, supplier: "Sri Lakshmi Distributors", status: "Awaiting approval" as const };
 }
 
@@ -219,6 +227,56 @@ export function topCandidates<T extends { id: string; category: "billing" | "ret
   });
 }
 
-export function projectCashFlow(days = 30) {
-  return { status: "Phase 2", phase2: true, days, message: "Cash-flow projection is Phase 2 and is not part of this prototype.", series: [] };
+export function projectCashFlow(days = 30, extraBills: import("./disha/types").DemoBill[] = []) {
+  const horizon = Math.min(90, Math.max(1, Math.floor(days)));
+  const costs = Object.fromEntries(DEMO_SEED.skus.map((sku) => [sku.id, sku.cost]));
+  const dailyNet = new Map<string, number>();
+
+  for (const bill of DEMO_SEED.bills) {
+    const cost = bill.lines.reduce((total, line) => total + line.qty * (costs[line.skuId] ?? 0), 0);
+    dailyNet.set(bill.date, (dailyNet.get(bill.date) ?? 0) + bill.total - cost);
+  }
+  for (const bill of extraBills) {
+    dailyNet.set(bill.date, (dailyNet.get(bill.date) ?? 0) + bill.total - bill.inventoryCost);
+  }
+
+  const shiftDate = (date: string, offset: number) => {
+    const value = new Date(`${date}T00:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + offset);
+    return value.toISOString().slice(0, 10);
+  };
+  const forecastFor = (date: string, trainingThrough = shiftDate(date, -1)) => {
+    const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+    const samples = Array.from({ length: 56 }, (_, index) => {
+      const sampleDate = shiftDate(trainingThrough, -index);
+      return { sampleDate, value: dailyNet.get(sampleDate) };
+    })
+      .filter((sample): sample is { sampleDate: string; value: number } => sample.value !== undefined && new Date(`${sample.sampleDate}T00:00:00Z`).getUTCDay() === weekday)
+      .map((sample) => sample.value);
+    const mean = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : 0;
+    const variance = samples.length > 1 ? samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (samples.length - 1) : 0;
+    const margin = 1.28 * Math.sqrt(variance);
+    return { forecast: mean, low: mean - margin, high: mean + margin, bandWidth: margin * 2 };
+  };
+
+  const series = Array.from({ length: horizon }, (_, index) => {
+    const date = shiftDate(AS_OF, index + 1);
+    return { date, ...forecastFor(date) };
+  });
+  const holdoutDates = Array.from({ length: 7 }, (_, index) => shiftDate(AS_OF, index - 7));
+  const actual = holdoutDates.reduce((sum, date) => sum + (dailyNet.get(date) ?? 0), 0);
+  const holdoutTrainingThrough = shiftDate(holdoutDates[0], -1);
+  const forecast = holdoutDates.reduce((sum, date) => sum + forecastFor(date, holdoutTrainingThrough).forecast, 0);
+
+  return {
+    status: "ready" as const,
+    days: horizon,
+    series,
+    holdout: {
+      days: holdoutDates.length,
+      actual,
+      forecast,
+      errorPercent: Math.abs(forecast - actual) / Math.max(Math.abs(actual), 1) * 100,
+    },
+  };
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { classifyIntent, parseStockChange } from "@/lib/agent";
 import { apiErrorResponse, readJson, DishaApiError } from "@/lib/disha/http";
 import { createProposal, getDashboardSnapshot, recordAuditEvent } from "@/lib/disha/store";
-import { getCustomerSegments, predictStockout } from "@/lib/engines";
+import { demoGheeUnitsSold28Days, getCustomerSegments, predictStockout } from "@/lib/engines";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       }
     }
     const state = snapshot.state;
-    const forecast = predictStockout(state.onHand);
+    const forecast = predictStockout(state.onHand, demoGheeUnitsSold28Days(state.extraBills), 2, state.festivalMultiplier);
     let answer = "";
     let proposal = null;
 

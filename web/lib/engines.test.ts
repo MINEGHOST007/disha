@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { allowedNumbers, forecastAllSkus, getAllCustomerSegments, getCustomerSegments, isDigitSwap, predictStockout, reconcileBills, reconcileDay, reconcileSeededWindow, segmentCustomers, topCandidates, validateNarration } from "./engines";
+import { allowedNumbers, forecastAllSkus, getAllCustomerSegments, getCustomerSegments, isDigitSwap, predictStockout, projectCashFlow, reconcileBills, reconcileDay, reconcileSeededWindow, segmentCustomers, topCandidates, validateNarration } from "./engines";
 import { generateSeedData, seededGheeUnitsSold28Days } from "./seed";
 import { buildBriefingCards } from "./disha/briefing";
 import { classifyIntent, parseStockChange, routeSignal, runDemoTool, TOOL_REGISTRY } from "./agent";
 import { canTransition } from "./disha/state-machine";
 
 describe("verified briefing narration", () => {
-  const state = { onHand: 5, billRecorded: 69, billExpected: 96, billNumber: 1048, salesTotal: 14296, billCount: 62 };
+  const state = { onHand: 5, billRecorded: 69, billExpected: 96, billNumber: 1048, salesTotal: 14296, billCount: 62, festivalMultiplier: 1, extraBills: [] };
 
   it("builds three deterministic cards whose fallback numbers are grounded in facts", () => {
     for (const language of ["en", "te"] as const) {
@@ -33,12 +33,15 @@ describe("Disha SRS acceptance cases", () => {
     expect(predictStockout(5)).toMatchObject({ reorderQty: 24, isUrgent: true });
     expect(predictStockout(12).daysLeft).toBeCloseTo(4.67, 1);
     expect(predictStockout(12).reorderQty).toBe(18);
+    expect(predictStockout(5, 72, 2, 1.5).velocity).toBeCloseTo(72 * 1.5 / 28);
+    expect(predictStockout(5, 72, 2, 1.5).daysLeft).toBeLessThan(predictStockout(5).daysLeft);
   });
   it("routes every signal deterministically and exposes all seven named tools", () => {
     expect(routeSignal("daily_run")).toEqual(["reconcile_day", "get_customer_segments", "predict_stockout"]);
     expect(routeSignal("daily_run")).toEqual(routeSignal("daily_run"));
     expect(TOOL_REGISTRY).toHaveLength(7);
-    expect(runDemoTool("project_cash_flow")).toMatchObject({ status: "Phase 2" });
+    expect(runDemoTool("project_cash_flow")).toMatchObject({ status: "ready", days: 30 });
+    expect(projectCashFlow().series).toHaveLength(30);
   });
   it("classifies ten English and ten Telugu intents without a network call", () => {
     const english: [string, string][] = [
@@ -62,6 +65,23 @@ describe("Disha SRS acceptance cases", () => {
     expect(parseStockChange("స్టాక్‌ను ౧౨కి మార్చండి", 5)).toBe(7);
     expect(parseStockChange("స్టాక్ నుంచి ౨ తగ్గించండి", 5)).toBe(-2);
     expect(parseStockChange("12 ghee", 5)).toBeNull();
+  });
+});
+
+describe("Phase 2 cash flow projection", () => {
+  it("forecasts 30 days from matching weekdays and reports a 7-day hold-out error", () => {
+    const projection = projectCashFlow();
+    expect(projection).toMatchObject({ status: "ready", days: 30, holdout: { days: 7 } });
+    expect(projection.series).toHaveLength(30);
+    expect(projection.series[0].date).toBe("2026-11-15");
+    expect(projection.series.every((point) => point.low <= point.forecast && point.forecast <= point.high)).toBe(true);
+    expect(Number.isFinite(projection.holdout.errorPercent)).toBe(true);
+  });
+
+  it("includes a new synthetic bill in the weekday forecast", () => {
+    const baseline = projectCashFlow(30);
+    const updated = projectCashFlow(30, [{ id: "demo-bill", date: "2026-11-13", total: 250, inventoryCost: 180, gheeQty: 1 }]);
+    expect(updated.series[5].forecast).not.toBe(baseline.series[5].forecast);
   });
 });
 

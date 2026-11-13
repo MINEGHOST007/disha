@@ -40,6 +40,7 @@ export type Database = {
       disha_approve_proposal: { Args: { p_proposal_id: string; p_language?: string; p_message_text?: string | null }; Returns: Json };
       disha_reject_proposal: { Args: { p_proposal_id: string; p_reason?: string }; Returns: Json };
       disha_update_demo_stock: { Args: { p_on_hand: number }; Returns: Json };
+      disha_update_demo_state: { Args: { p_patch: Json; p_tool: string; p_facts?: Json }; Returns: Json };
       disha_reset_demo: { Args: Record<string, never>; Returns: Json };
     };
     Enums: Record<string, never>;

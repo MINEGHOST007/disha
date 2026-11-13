@@ -15,7 +15,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Disha — Your shop, a little more in hand",
-  description: "A calm, proactive business copilot for kirana merchants. Synthetic sandbox data only.",
+  description: "A calm, proactive kirana shop copilot with inventory scenarios and a synthetic cash-flow forecast. Sandbox data only.",
   applicationName: "Disha",
 };
 

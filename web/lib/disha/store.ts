@@ -1,10 +1,11 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/lib/supabase/database";
-import { createReorderDraft, DEMO_SEED, forecastAllSkus, getAllCustomerSegments, getCustomerSegments, predictStockout, reconcileDay, reconcileSeededWindow } from "@/lib/engines";
+import { createReorderDraft, demoGheeUnitsSold28Days, DEMO_SEED, forecastAllSkus, getAllCustomerSegments, getCustomerSegments, predictStockout, reconcileDay, reconcileSeededWindow } from "@/lib/engines";
 import { AS_OF, LEDGER_END, LEDGER_START } from "@/lib/seed";
-import type { ActivityLog, DashboardSnapshot, DemoState, ProposalRecord, ProposalType } from "./types";
+import type { ActivityLog, DashboardSnapshot, DemoBill, DemoState, ProposalRecord, ProposalType } from "./types";
 import { DishaApiError } from "./http";
 
 export const DEFAULT_DEMO_STATE: DemoState = {
@@ -14,11 +15,14 @@ export const DEFAULT_DEMO_STATE: DemoState = {
   billNumber: 1048,
   salesTotal: 14296,
   billCount: 62,
+  festivalMultiplier: 1,
+  extraBills: [],
 };
 
-function demoAnalytics(onHand: number) {
+function demoAnalytics(onHand: number, festivalMultiplier: number, extraBills: DemoBill[]) {
+  const extraGheeUnits = demoGheeUnitsSold28Days(extraBills) - demoGheeUnitsSold28Days();
   const stock = forecastAllSkus().map((sku) => sku.id === "sku_ghee"
-    ? { ...sku, onHand, ...predictStockout(onHand, sku.unitsSold28Days, sku.leadTimeDays) }
+    ? { ...sku, unitsSold28Days: sku.unitsSold28Days + extraGheeUnits, onHand, ...predictStockout(onHand, sku.unitsSold28Days + extraGheeUnits, sku.leadTimeDays, festivalMultiplier) }
     : sku);
   return {
     customers: getAllCustomerSegments(),
@@ -28,7 +32,7 @@ function demoAnalytics(onHand: number) {
       asOf: AS_OF,
       start: LEDGER_START,
       end: LEDGER_END,
-      billCount: DEMO_SEED.bills.length,
+      billCount: DEMO_SEED.bills.length + extraBills.length,
       customerCount: DEMO_SEED.customers.length,
       skuCount: DEMO_SEED.skus.length,
       checksum: DEMO_SEED.checksum,
@@ -48,7 +52,16 @@ function normalizeState(value: unknown): DemoState {
     billNumber: finiteNumber(state.billNumber, DEFAULT_DEMO_STATE.billNumber),
     salesTotal: finiteNumber(state.salesTotal, DEFAULT_DEMO_STATE.salesTotal),
     billCount: finiteNumber(state.billCount, DEFAULT_DEMO_STATE.billCount),
+    festivalMultiplier: Math.min(3, Math.max(1, finiteNumber(state.festivalMultiplier, 1))),
+    extraBills: Array.isArray(state.extraBills) ? state.extraBills.filter(isDemoBill).slice(-100) : [],
   };
+}
+
+function isDemoBill(value: unknown): value is DemoBill {
+  if (!value || typeof value !== "object") return false;
+  const bill = value as Partial<DemoBill>;
+  return typeof bill.id === "string" && typeof bill.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(bill.date)
+    && Number.isFinite(bill.total) && Number.isFinite(bill.inventoryCost) && Number.isInteger(bill.gheeQty);
 }
 
 function finiteNumber(value: unknown, fallback: number) {
@@ -67,6 +80,8 @@ function logLabel(row: Record<string, unknown>): ActivityLog {
     reorder: "Purchase draft",
     stock_update: "Stock update",
     demo_stock_editor: "Stock count changed",
+    demo_bill_editor: "Synthetic demo bill",
+    festival_multiplier: "Festival forecast setting",
     voice_intent: "Voice request",
     reconcile_day: "Bill review",
     reset_demo: "Demo reset",
@@ -104,8 +119,10 @@ function detailFor(tool: string, facts: Record<string, unknown>, outcome: string
   if (tool === "message") return `${facts.name ?? "Lakshmi"} · simulated message`;
   if (tool === "reorder") return `${facts.sku_name ?? "Ghee 500 ml"} · ${facts.qty ?? 0} units`;
   if (tool === "stock_update" || tool === "demo_stock_editor") {
-    return `Ghee 500 ml · ${facts.old_on_hand ?? facts.current_on_hand ?? "—"} to ${facts.new_on_hand ?? "—"} units`;
+    return `Ghee 500 ml · ${facts.old_on_hand ?? facts.current_on_hand ?? "—"} to ${facts.new_on_hand ?? facts.onHand ?? "—"} units`;
   }
+  if (tool === "demo_bill_editor") return `Bill ₹${facts.total ?? 0} · ${facts.ghee_qty ?? 0} ghee jars · ${facts.date ?? ""}`;
+  if (tool === "festival_multiplier") return `Festival demand multiplier · ${facts.festivalMultiplier ?? 1}×`;
   if (tool === "reconcile_day") return "Bill #1048 marked as legitimate · ledger unchanged";
   if (tool === "voice_intent") return `Intent: ${facts.intent ?? outcome}`;
   if (tool === "reset_demo") return "Synthetic demo data restored";
@@ -145,14 +162,14 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
       state,
       logs: (data ?? []).map((entry) => logLabel(entry as Record<string, unknown>)),
       storageAvailable: true,
-      analytics: demoAnalytics(state.onHand),
+      analytics: demoAnalytics(state.onHand, state.festivalMultiplier, state.extraBills),
     };
   } catch {
     return {
       state: DEFAULT_DEMO_STATE,
       logs: [],
       storageAvailable: false,
-      analytics: demoAnalytics(DEFAULT_DEMO_STATE.onHand),
+      analytics: demoAnalytics(DEFAULT_DEMO_STATE.onHand, DEFAULT_DEMO_STATE.festivalMultiplier, DEFAULT_DEMO_STATE.extraBills),
     };
   }
 }
@@ -217,9 +234,10 @@ export async function createProposal(type: ProposalType, language: "te" | "en" =
     };
     reason = `Lakshmi may appreciate a check-in after ${customer.daysSince} days away; her usual visit gap is ${customer.medianGap} days.`;
   } else if (type === "reorder") {
-    const forecast = predictStockout(state.onHand);
+    const unitsSold28Days = demoGheeUnitsSold28Days(state.extraBills);
+    const forecast = predictStockout(state.onHand, unitsSold28Days, 2, state.festivalMultiplier);
     if (forecast.reorderQty <= 0) throw new DishaApiError("Current stock does not need a reorder draft.", 409);
-    const draft = createReorderDraft(state.onHand);
+    const draft = createReorderDraft(state.onHand, state.festivalMultiplier, unitsSold28Days);
     facts = {
       sku_id: "sku_ghee",
       sku_name: "Ghee 500 ml",
@@ -286,12 +304,43 @@ function rpcError(code?: string) {
   return new DishaApiError("The sandbox could not resolve this proposal.", 503);
 }
 
-export async function updateDemoStock(onHand: number) {
-  if (!Number.isInteger(onHand) || onHand < 0 || onHand > 10000) {
+export async function updateDemoState(patch: { onHand?: number; festivalMultiplier?: number }, tool: "demo_stock_editor" | "festival_multiplier") {
+  if (patch.onHand !== undefined && (!Number.isInteger(patch.onHand) || patch.onHand < 0 || patch.onHand > 10000)) {
     throw new DishaApiError("Stock must be a whole number from 0 to 10,000.", 400);
   }
-  const { data, error } = await getSupabaseAdmin().rpc("disha_update_demo_stock", { p_on_hand: onHand });
-  if (error) throw new DishaApiError("The stock count could not be saved.", 503);
+  if (patch.festivalMultiplier !== undefined && (!Number.isFinite(patch.festivalMultiplier) || patch.festivalMultiplier < 1 || patch.festivalMultiplier > 3)) {
+    throw new DishaApiError("Festival multiplier must be between 1.0 and 3.0.", 400);
+  }
+  if (!Object.keys(patch).length) throw new DishaApiError("There is no demo change to save.", 400);
+  const { data, error } = await getSupabaseAdmin().rpc("disha_update_demo_state", {
+    p_patch: patch,
+    p_tool: tool,
+    p_facts: patch as Json,
+  });
+  if (error) throw new DishaApiError("The demo settings could not be saved.", 503);
+  return normalizeState(data);
+}
+
+export async function addDemoBill(total: number, inventoryCost: number, gheeQty: number) {
+  const state = await getCurrentDemoState();
+  if (!Number.isInteger(total) || total < 1 || total > 1_000_000) throw new DishaApiError("Bill total must be a whole number from 1 to 1,000,000.", 400);
+  if (!Number.isInteger(inventoryCost) || inventoryCost < 0 || inventoryCost > 1_000_000) throw new DishaApiError("Inventory cost must be a whole number from 0 to 1,000,000.", 400);
+  if (!Number.isInteger(gheeQty) || gheeQty < 0 || gheeQty > 100) throw new DishaApiError("Ghee quantity must be a whole number from 0 to 100.", 400);
+  if (gheeQty > state.onHand) throw new DishaApiError("The bill cannot sell more ghee than is in stock.", 409);
+
+  const bill: DemoBill = { id: randomUUID(), date: LEDGER_END, total, inventoryCost, gheeQty };
+  const patch = {
+    extraBills: [...state.extraBills, bill].slice(-100),
+    onHand: state.onHand - gheeQty,
+    salesTotal: state.salesTotal + total,
+    billCount: state.billCount + 1,
+  };
+  const { data, error } = await getSupabaseAdmin().rpc("disha_update_demo_state", {
+    p_patch: patch,
+    p_tool: "demo_bill_editor",
+    p_facts: { date: bill.date, total, inventory_cost: inventoryCost, ghee_qty: gheeQty },
+  });
+  if (error) throw new DishaApiError("The demo bill could not be saved.", 503);
   return normalizeState(data);
 }
 

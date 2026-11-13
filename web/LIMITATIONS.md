@@ -14,7 +14,8 @@ Disha is a synthetic sandbox prototype, not a production merchant assistant. Its
 ## Still limited to the prototype
 
 - Browser speech recognition varies by browser and device; the typed fallback is available, but a cross-browser Telugu speech evaluation has not been completed.
-- Cash-flow projection and festival uplift remain Phase 2.
+- The cash-flow forecast is a deterministic synthetic estimate: bill receipts minus inventory cost, without rent, payroll, taxes, or live account balances. The fixed-seed 7-day hold-out error is 25.3%, above the SRS target of 10%; the UI and scorecard report that honestly. It is not a production financial forecast.
+- Festival uplift is a manually selected scenario multiplier, off by default. It is not inferred from a festival calendar or real demand signals.
 - There is no authentication or per-merchant tenant isolation. Supabase state is a shared synthetic demo; do not use real merchant records without adding authentication, tenant-scoped queries, and rate limits.
 - WhatsApp delivery, payment/POS/Paytm integrations, and live customer or supplier data are intentionally not connected.
 - The deterministic evaluation is a fixture acceptance check, not a statistically representative hold-out study.

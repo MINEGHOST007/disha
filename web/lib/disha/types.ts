@@ -2,6 +2,14 @@ export type ProposalType = "billing_correction" | "message" | "reorder" | "stock
 
 export type ProposalStatus = "PROPOSED" | "APPROVED" | "REJECTED" | "EXECUTED" | "FAILED";
 
+export type DemoBill = {
+  id: string;
+  date: string;
+  total: number;
+  inventoryCost: number;
+  gheeQty: number;
+};
+
 export type DemoState = {
   onHand: number;
   billRecorded: number;
@@ -9,6 +17,23 @@ export type DemoState = {
   billNumber: number;
   salesTotal: number;
   billCount: number;
+  festivalMultiplier: number;
+  extraBills: DemoBill[];
+};
+
+export type CashFlowPoint = {
+  date: string;
+  forecast: number;
+  low: number;
+  high: number;
+  bandWidth: number;
+};
+
+export type CashFlowProjection = {
+  status: "ready";
+  days: number;
+  series: CashFlowPoint[];
+  holdout: { days: number; actual: number; forecast: number; errorPercent: number };
 };
 
 export type ActivityLog = {

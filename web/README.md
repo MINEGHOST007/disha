@@ -20,7 +20,7 @@ npm run seed:check
 npm run eval
 ```
 
-`seed:check` prints the fixed checksum and the three worked examples. `eval` reports the deterministic seed, reconciliation, customer, inventory, voice-intent, and narration-safety acceptance checks; cash-flow forecasting remains Phase 2. See [LIMITATIONS.md](./LIMITATIONS.md) for production constraints.
+`seed:check` prints the fixed checksum and the three worked examples. `eval` reports deterministic seed, reconciliation, customer, inventory, voice-intent, narration-safety, and cash-flow hold-out results. It exits non-zero when a scorecard target is missed; the current cash-flow hold-out is above target. See [LIMITATIONS.md](./LIMITATIONS.md) for production constraints.
 
 ## 60-second demo
 
@@ -28,8 +28,11 @@ npm run eval
 2. Open **Bills** and inspect the ₹27 digit-swap example (₹96 expected vs ₹69 recorded).
 3. Open **Customers** and review Lakshmi's potentially-at-risk case; reveal the balance only when demonstrating that control.
 4. Open **Stock** and move the demo slider from 5 to 12. The forecast changes from about 1.9 to 4.7 days and the suggested reorder from 24 to 18 jars.
-5. Create a reorder draft or review the activity surface to demonstrate the prototype approval flow. No real order or message is sent.
-6. Use **Reset demo** to return to the initial state.
+5. Adjust the optional festival multiplier on **Stock** and see the stock-out forecast respond; it starts off at 1.00×.
+6. Add a synthetic bill on **Stock** and watch sales, inventory, cash-flow, and audit figures update.
+7. Open **Cash flow** to review the 30-day weekday-mean forecast, uncertainty band, and 7-day hold-out result.
+8. Create a reorder draft or review the activity surface to demonstrate the approval flow. No real order or message is sent.
+9. Use **Reset demo** to return to the initial state.
 
 ## Data and safety
 

@@ -20,8 +20,8 @@ export function isDigitSwap(expected: number, recorded: number) {
   return false;
 }
 
-export function predictStockout(onHand = 5, unitsSold28Days = 72, leadTime = 2, asOf = AS_OF) {
-  const velocity = unitsSold28Days / VELOCITY_WINDOW_DAYS;
+export function predictStockout(onHand = 5, unitsSold28Days = 72, leadTime = 2, festivalMultiplier = 1, asOf = AS_OF) {
+  const velocity = unitsSold28Days * Math.max(1, festivalMultiplier) / VELOCITY_WINDOW_DAYS;
   const daysLeft = velocity > 0 ? Math.max(0, onHand) / velocity : Number.POSITIVE_INFINITY;
   const safetyBuffer = Math.ceil(2 * velocity);
   const onHandAtDelivery = Math.max(0, onHand - velocity * leadTime);

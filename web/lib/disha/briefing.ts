@@ -1,4 +1,4 @@
-import { createReorderDraft, getCustomerSegments, predictStockout, reconcileDay, seededGheeUnitsSold28Days } from "../engines";
+import { createReorderDraft, demoGheeUnitsSold28Days, getCustomerSegments, predictStockout, reconcileDay } from "../engines";
 import type { DemoState } from "./types";
 
 export type BriefingCardId = "billing" | "retention" | "inventory";
@@ -18,9 +18,9 @@ const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 1
 export function buildBriefingCards(state: DemoState, language: BriefingLanguage = "en"): BriefingCard[] {
   const billing = reconcileDay(state.billRecorded)[0];
   const customer = getCustomerSegments();
-  const unitsSold28Days = seededGheeUnitsSold28Days();
-  const forecast = predictStockout(state.onHand, unitsSold28Days, 2);
-  const reorder = createReorderDraft(state.onHand);
+  const unitsSold28Days = demoGheeUnitsSold28Days(state.extraBills);
+  const forecast = predictStockout(state.onHand, unitsSold28Days, 2, state.festivalMultiplier);
+  const reorder = createReorderDraft(state.onHand, state.festivalMultiplier, unitsSold28Days);
   const billingFacts = {
     bill_number: state.billNumber,
     item: "Sugar 2 kg",
@@ -43,6 +43,7 @@ export function buildBriefingCards(state: DemoState, language: BriefingLanguage 
     days_left: round1(forecast.daysLeft),
     reorder_quantity: reorder.quantity,
     supplier_lead_days: 2,
+    festival_multiplier: state.festivalMultiplier,
   };
 
   return [

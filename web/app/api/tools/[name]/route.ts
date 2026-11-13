@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: { name: strin
     }
 
     const state = await getCurrentDemoState();
-    const result = runDemoTool(tool.name, { onHand: state.onHand, billRecorded: state.billRecorded });
+    const result = runDemoTool(tool.name, { onHand: state.onHand, billRecorded: state.billRecorded, festivalMultiplier: state.festivalMultiplier, extraBills: state.extraBills });
     await recordAuditEvent("tool_ran", { tool: tool.name });
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

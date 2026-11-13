@@ -1,4 +1,5 @@
-import { createReorderDraft, getCustomerSegments, predictStockout, reconcileDay } from "./engines";
+import { createReorderDraft, demoGheeUnitsSold28Days, getCustomerSegments, predictStockout, projectCashFlow, reconcileDay } from "./engines";
+import type { DemoBill } from "./disha/types";
 
 export type DemoSignal = "daily_run" | "new_bill" | "stock_change" | "voice_command";
 export type Intent = "STOCK_QUERY" | "CUSTOMER_STATUS" | "TODAY_PRIORITIES" | "APPROVE" | "REJECT" | "STOCK_UPDATE" | "UNKNOWN";
@@ -54,14 +55,14 @@ export function classifyIntent(input: string): Intent {
   return "UNKNOWN";
 }
 
-export function runDemoTool(name: string, input: { onHand?: number; billRecorded?: number } = {}) {
+export function runDemoTool(name: string, input: { onHand?: number; billRecorded?: number; festivalMultiplier?: number; extraBills?: DemoBill[] } = {}) {
   switch (name) {
     case "reconcile_day": return reconcileDay(input.billRecorded ?? 69);
     case "get_customer_segments": return getCustomerSegments();
-    case "predict_stockout": return predictStockout(input.onHand ?? 5);
-    case "project_cash_flow": return { status: "Phase 2", message: "Cash-flow projection is not part of this demo." };
+    case "predict_stockout": return predictStockout(input.onHand ?? 5, demoGheeUnitsSold28Days(input.extraBills), 2, input.festivalMultiplier ?? 1);
+    case "project_cash_flow": return projectCashFlow(30, input.extraBills);
     case "draft_whatsapp_message": return { status: "PROPOSED", simulated: true };
-    case "create_reorder_draft": return { status: "PROPOSED", quantity: createReorderDraft(input.onHand ?? 5).quantity };
+    case "create_reorder_draft": return { status: "PROPOSED", quantity: createReorderDraft(input.onHand ?? 5, input.festivalMultiplier ?? 1, demoGheeUnitsSold28Days(input.extraBills)).quantity };
     case "update_stock_from_voice": return { status: "PROPOSED", onHand: input.onHand ?? 5, requiresApproval: true };
     default: throw new Error(`Unknown tool: ${name}`);
   }
