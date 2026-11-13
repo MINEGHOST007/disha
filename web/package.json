@@ -12,6 +12,7 @@
     "seed:check": "tsx scripts/seed-check.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
     "ai": "^7.0.171",
     "lucide-react": "^1.72.0",

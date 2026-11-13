@@ -27,7 +27,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return payload as T;
 }
 type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
-type SpeechRecognizer = { lang: string; onresult: ((event: SpeechResultEvent) => void) | null; start: () => void };
+type SpeechRecognizer = { lang: string; onresult: ((event: SpeechResultEvent) => void) | null; onstart: (() => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void };
 type SpeechRecognizerConstructor = new () => SpeechRecognizer;
 
 const copy = {
