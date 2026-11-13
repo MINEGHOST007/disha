@@ -5,6 +5,7 @@ import { Activity, ArrowDownRight, ArrowRight, AudioLines, BadgeCheck, Bell, Boo
 import { predictStockout } from "@/lib/engine-core";
 import { CashFlowPanel } from "@/components/cash-flow-panel";
 import { DemoBillEditor } from "@/components/demo-bill-editor";
+import { NarrationPlayer } from "@/components/narration-player";
 import type { ActivityLog, CashFlowProjection, DemoAnalytics, DemoState } from "@/lib/disha/types";
 
 type Tab = "Today" | "Bills" | "Customers" | "Stock" | "Cash flow" | "Activity";
@@ -312,6 +313,8 @@ export function DishaDashboard({ initialState, initialLogs, storageAvailable, an
   const [voiceComposerOpen, setVoiceComposerOpen] = useState(false);
   const [voiceComposerText, setVoiceComposerText] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [, setSpeechFailures] = useState(0);
+  const [voiceAnswer, setVoiceAnswer] = useState("");
   const [messagePreview, setMessagePreview] = useState(false);
   const [messageDrafts, setMessageDrafts] = useState(messageTemplates);
   const [editingMessage, setEditingMessage] = useState(false);
@@ -486,9 +489,11 @@ export function DishaDashboard({ initialState, initialLogs, storageAvailable, an
   };
   const handleVoiceText = async (text: string) => {
     setVoiceText(text);
+    setVoiceAnswer("");
     try {
       const result = await postJson<{ intent: string; answer: string; proposal?: { id: string; facts: Record<string, unknown> } | null; storageAvailable: boolean }>("/api/voice/intent", { transcript: text, language });
       setDatabaseAvailable(result.storageAvailable);
+      setVoiceAnswer(result.answer);
       if (result.intent === "STOCK_QUERY") setTab("Stock");
       if (result.intent === "CUSTOMER_STATUS") setTab("Customers");
       if (result.intent === "TODAY_PRIORITIES") setTab("Today");
@@ -509,9 +514,29 @@ export function DishaDashboard({ initialState, initialLogs, storageAvailable, an
     recognition.lang = language === "te" ? "te-IN" : "en-IN";
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => { setIsListening(false); setNotice("Voice input stopped. You can type the request instead."); };
-    recognition.onresult = (event) => { void handleVoiceText(event.results[0][0].transcript); };
-    recognition.start();
+    recognition.onerror = () => {
+      setIsListening(false);
+      setSpeechFailures((failures) => {
+        const nextFailures = failures + 1;
+        if (nextFailures >= 2) {
+          setVoiceComposerOpen(true);
+          setNotice("Voice recognition failed twice. Type your request instead.");
+        } else {
+          setNotice("Voice input stopped. Try once more, or type your request instead.");
+        }
+        return nextFailures;
+      });
+    };
+    recognition.onresult = (event) => {
+      setSpeechFailures(0);
+      void handleVoiceText(event.results[0][0].transcript);
+    };
+    try {
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      setNotice("Voice input could not start. You can type the request instead.");
+    }
   };
 
   const nav: { label: Tab; icon: typeof Activity }[] = [{ label: "Today", icon: Coffee }, { label: "Bills", icon: ClipboardList }, { label: "Customers", icon: Users }, { label: "Stock", icon: Package }, { label: "Cash flow", icon: TrendingUp }, { label: "Activity", icon: Activity }];
@@ -524,7 +549,7 @@ export function DishaDashboard({ initialState, initialLogs, storageAvailable, an
       <div className="sidebar-bottom"><div className="help-row"><CircleHelp size={17} /><span>Help & feedback</span><ArrowRight size={14} /></div><div className="profile"><span className="profile-avatar">S</span><span className="profile-info"><strong>Suresh</strong><small>Shop owner</small></span><button className="icon-button" aria-label="Profile options"><ChevronDown size={16} /></button></div></div>
     </aside>
     <main className="main-content">
-      <header className="topbar"><div className="breadcrumb">Sri Sai General Stores <span>/</span> <strong>{t[(tab === "Cash flow" ? "cashflow" : tab.toLowerCase()) as keyof typeof t]}</strong></div><div className="top-actions"><span className="sandbox-pill" title="This preview uses deterministic synthetic shop data. Connect production data before launch."><span />{t.sandbox}<small>synthetic preview</small></span><button className="language-toggle" onClick={() => { const nextLanguage = language === "en" ? "te" : "en"; setLanguage(nextLanguage); document.documentElement.lang = nextLanguage; }} aria-label="Change language"><Languages size={15} />{language === "en" ? "EN" : "తె"}<span className="toggle-caret">⌄</span></button><button className="icon-button notification" aria-label="Notifications"><Bell size={18} /><i /></button></div></header>
+      <header className="topbar"><div className="breadcrumb">Sri Sai General Stores <span>/</span> <strong>{t[(tab === "Cash flow" ? "cashflow" : tab.toLowerCase()) as keyof typeof t]}</strong></div><div className="top-actions"><span className="sandbox-pill" title="This preview uses deterministic synthetic shop data. Connect production data before launch."><span />{t.sandbox}<small>synthetic preview</small></span><button className="language-toggle" onClick={() => { const nextLanguage = language === "en" ? "te" : "en"; setLanguage(nextLanguage); document.documentElement.lang = nextLanguage; }} aria-label="Change language"><Languages size={15} />{language === "en" ? "EN" : "తె"}<span className="toggle-caret">⌄</span></button><button className="language-planned" type="button" disabled title="Planned" aria-label="Hindi planned">हिन्दी · planned</button><button className="icon-button notification" aria-label="Notifications"><Bell size={18} /><i /></button></div></header>
       <div className="content-wrap">
         {tab === "Today" && <>
           <section className="welcome-row"><div><p className="eyebrow">SATURDAY <span>·</span> 14 NOVEMBER 2026</p><h1>{t.greeting}<span className="greeting-dot">.</span></h1><p className="welcome-subtitle">{t.subtitle}</p></div><button className="reset-button" onClick={() => setModal("reset")}><RotateCcw size={15} />{t.reset}</button></section>
@@ -537,7 +562,8 @@ export function DishaDashboard({ initialState, initialLogs, storageAvailable, an
             </div>
           </section>
           <DemoBillEditor saving={savingBill} language={language} onAdd={addDemoBill} />
-          <section className="voice-bar"><div className="voice-mark"><AudioLines size={19} /></div><div className="voice-copy"><strong>{voiceText || t.speak}</strong><span>{voiceText ? "Try another request or select a section above." : "Ask Disha about bills, customers or stock"}</span></div><div className={`voice-waveform ${isListening ? "is-listening" : ""}`} aria-label={isListening ? "Listening" : "Voice input ready"} role="img">{[18, 30, 12, 36, 23, 42, 16, 31, 22, 38, 14, 27, 19].map((height, index) => <span key={index} style={{ "--wave-height": `${height}%` } as React.CSSProperties} />)}</div><button className={`mic-button ${isListening ? "recording" : ""}`} onClick={speak} aria-label={isListening ? "Listening for voice input" : "Start voice input"}><Mic size={18} /></button><span className="voice-divider" /><button className="type-button" onClick={() => setVoiceComposerOpen((open) => !open)} aria-expanded={voiceComposerOpen}>Type instead <ArrowRight size={14} /></button>{voiceComposerOpen && <form className="voice-composer" onSubmit={(event) => { event.preventDefault(); const trimmed = voiceComposerText.trim(); if (!trimmed) return; void handleVoiceText(trimmed); setVoiceComposerText(""); setVoiceComposerOpen(false); }}><label htmlFor="voice-request">Ask Disha</label><div><input id="voice-request" value={voiceComposerText} onChange={(event) => setVoiceComposerText(event.target.value)} placeholder="e.g. How much ghee is left?" autoFocus /><button type="submit" aria-label="Send typed request"><ArrowRight size={14} /></button></div></form>}</section>
+          <section className="voice-bar"><div className="voice-mark"><AudioLines size={19} /></div><div className="voice-copy"><strong>{voiceText || t.speak}</strong><span>{voiceText ? "Try another request or select a section above." : "Ask Disha about bills, customers or stock"}</span></div><div className={`voice-waveform ${isListening ? "is-listening" : ""}`} aria-label={isListening ? "Listening" : "Voice input ready"} role="img">{[18, 30, 12, 36, 23, 42, 16, 31, 22, 38, 14, 27, 19].map((height, index) => <span key={index} style={{ "--wave-height": `${height}%` } as React.CSSProperties} />)}</div><button className={`mic-button ${isListening ? "recording" : ""}`} onClick={speak} aria-label={isListening ? "Listening for voice input" : "Start voice input"}><Mic size={18} /></button><span className="voice-divider" /><button className="type-button" onClick={() => setVoiceComposerOpen((open) => !open)} aria-expanded={voiceComposerOpen}>Type instead <ArrowRight size={14} /></button>{voiceComposerOpen && <form className="voice-composer" onSubmit={(event) => { const nativeEvent = event.nativeEvent as SubmitEvent & { isComposing?: boolean; keyCode?: number }; if (nativeEvent.isComposing || nativeEvent.keyCode === 229) return; event.preventDefault(); const trimmed = voiceComposerText.trim(); if (!trimmed) return; void handleVoiceText(trimmed); setVoiceComposerText(""); setVoiceComposerOpen(false); }}><label htmlFor="voice-request">Ask Disha</label><div><input id="voice-request" value={voiceComposerText} onChange={(event) => setVoiceComposerText(event.target.value)} placeholder="e.g. How much ghee is left?" autoFocus /><button type="submit" aria-label="Send typed request"><ArrowRight size={14} /></button></div></form>}</section>
+          {voiceAnswer && <NarrationPlayer text={voiceAnswer} language={language} />}
           <div className="footer-note"><span className="ai-spark"><Sparkles size={13} /></span> Disha notices patterns. You stay in control. <span className="footer-separator">·</span> Nothing happens without your approval.</div>
         </>}
         {tab === "Bills" && <section className="detail-page"><PageHeading eyebrow="RECONCILIATION" title="A quick billing check" subtitle="A small difference stood out in yesterday’s bills." /><div className="bill-summary panel"><div className="bill-topline"><span className="bill-id">BILL #1048</span><span className={`soft-tag ${billRecorded === initialState.billExpected ? "green-soft" : ""}`}>{billRecorded === initialState.billExpected ? "Correction approved" : "Needs a look"}</span><span className="bill-date">13 Nov 2026 · 11:42 AM</span></div><div className="bill-customer"><span className="customer-initial">R</span><div><strong>Ravi Kumar</strong><small>Paid by UPI</small></div><span className="total-label">Bill total <strong>₹684</strong></span></div><div className="recon-table"><div className="recon-row table-head"><span>ITEM</span><span>EXPECTED</span><span>RECORDED</span></div><div className="recon-row"><span>Sugar 2 kg</span><span>₹{initialState.billExpected}</span><span className={billRecorded === initialState.billExpected ? "" : "bad-value"}>₹{billRecorded.toLocaleString("en-IN")} <small>{billRecorded === initialState.billExpected ? "approved" : `−₹${initialState.billExpected - billRecorded}`}</small></span></div></div><div className="explain-box"><span className="explain-icon"><Sparkles size={16} /></span><div><strong>What we noticed</strong><p>{billRecorded === initialState.billExpected ? "The synthetic bill now reflects the correction you approved." : `The price list says ₹${initialState.billExpected}. The bill has ₹${billRecorded} — the digits may have been swapped. No changes have been made.`}</p></div></div><div className="action-row"><button className="secondary-action" onClick={() => void audit()} disabled={billRecorded === initialState.billExpected}>Looks right</button><button className="primary-action" onClick={() => setModal("bill")} disabled={billRecorded === initialState.billExpected}>Approve correction <ArrowRight size={16} /></button></div></div><div className="supporting-note"><ShieldCheck size={16} />{billRecorded === initialState.billExpected ? "The synthetic bill now reflects your approved correction." : "The bill ledger stays unchanged until you approve a correction."}</div><div className="cohort-panel panel"><div className="catalog-heading"><div><p className="eyebrow">7-DAY RECONCILIATION</p><h2>Other records to review</h2></div><span>{analytics.discrepancies.filter((row) => row.bill !== "#1048").length} additional flags</span></div><div className="catalog-table-wrap"><table className="catalog-table"><caption>Approved discounts are excluded from review.</caption><thead><tr><th scope="col">Bill</th><th scope="col">Issue</th><th scope="col">Expected</th><th scope="col">Recorded</th></tr></thead><tbody>{analytics.discrepancies.filter((row) => row.bill !== "#1048").map((row) => <tr key={`${row.bill}-${row.kind}`}><th scope="row">{row.bill}</th><td>{row.kind.toLowerCase().replaceAll("_", " ")} · {row.item}</td><td>₹{row.expected.toLocaleString("en-IN")}</td><td>₹{row.recorded.toLocaleString("en-IN")}</td></tr>)}</tbody></table></div></div></section>}

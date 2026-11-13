@@ -32,15 +32,25 @@ export async function generateOpenRouterText(input: { system: string; prompt: st
 export async function synthesizeSpeech(input: { text: string; language: "en" | "te"; voiceId?: string }) {
   const provider = selectedTtsProvider();
   if (!provider) return null;
-  if (provider === "elevenlabs") {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${input.voiceId ?? process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM"}`, { method: "POST", headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY!, "Content-Type": "application/json", Accept: "audio/mpeg" }, body: JSON.stringify({ text: input.text, model_id: process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2", output_format: "mp3_44100_128" }) });
-    if (!response.ok) throw new Error(`ElevenLabs request failed: ${response.status}`);
-    return { body: await response.arrayBuffer(), contentType: "audio/mpeg", provider };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    if (provider === "elevenlabs") {
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${input.voiceId ?? process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM"}`, { method: "POST", signal: controller.signal, headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY!, "Content-Type": "application/json", Accept: "audio/mpeg" }, body: JSON.stringify({ text: input.text, model_id: process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2", output_format: "mp3_44100_128" }) });
+      if (!response.ok) throw new Error(`ElevenLabs request failed: ${response.status}`);
+      const body = await response.arrayBuffer();
+      if (body.byteLength === 0 || body.byteLength > 10_000_000) throw new Error("ElevenLabs audio size is invalid");
+      return { body, contentType: "audio/mpeg", provider };
+    }
+    const response = await fetch("https://api.sarvam.ai/text-to-speech", { method: "POST", signal: controller.signal, headers: { "api-subscription-key": process.env.SARVAM_API_KEY!, "Content-Type": "application/json" }, body: JSON.stringify({ inputs: [input.text], target_language_code: input.language === "te" ? "te-IN" : "en-IN", speaker: process.env.SARVAM_SPEAKER ?? "meera", model: process.env.SARVAM_TTS_MODEL ?? "bulbul:v2" }) });
+    if (!response.ok) throw new Error(`Sarvam request failed: ${response.status}`);
+    const payload = await response.json() as { audios?: string[] };
+    const encoded = payload.audios?.[0];
+    if (!encoded || encoded.length > 14_000_000) throw new Error("Sarvam audio size is invalid");
+    const body = Buffer.from(encoded, "base64");
+    if (body.byteLength === 0 || body.byteLength > 10_000_000) throw new Error("Sarvam audio size is invalid");
+    return { body, contentType: "audio/wav", provider };
+  } finally {
+    clearTimeout(timeout);
   }
-  const response = await fetch("https://api.sarvam.ai/text-to-speech", { method: "POST", headers: { "api-subscription-key": process.env.SARVAM_API_KEY!, "Content-Type": "application/json" }, body: JSON.stringify({ inputs: [input.text], target_language_code: input.language === "te" ? "te-IN" : "en-IN", speaker: process.env.SARVAM_SPEAKER ?? "meera", model: process.env.SARVAM_TTS_MODEL ?? "bulbul:v2" }) });
-  if (!response.ok) throw new Error(`Sarvam request failed: ${response.status}`);
-  const payload = await response.json() as { audios?: string[] };
-  const encoded = payload.audios?.[0];
-  if (!encoded) throw new Error("Sarvam returned no audio");
-  return { body: Buffer.from(encoded, "base64"), contentType: "audio/wav", provider };
 }

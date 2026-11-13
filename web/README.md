@@ -10,6 +10,7 @@ The server supports provider factories so the app can switch providers without c
 - TTS: `TTS_PROVIDER=elevenlabs` with `ELEVENLABS_API_KEY`/`ELEVENLABS_VOICE_ID`, or `TTS_PROVIDER=sarvam` with `SARVAM_API_KEY` and optional `SARVAM_SPEAKER`.
 - `POST /api/narrate` uses the selected LLM and keeps deterministic validation plus fallback text.
 - `POST /api/tts` accepts `{ "text": "...", "language": "en" | "te" }` and returns audio from the selected TTS provider.
+- Voice replies now include an accessible audio player; if provider audio is not configured, the browser's device voice is used when available. Speech recognition exposes the typed composer after two failures.
 
 Provider keys are server-only. If an optional provider is not configured, narration falls back safely and TTS returns a clear 503 instead of pretending audio was generated.
 
