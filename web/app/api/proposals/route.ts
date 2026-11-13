@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiErrorResponse, readJson, DishaApiError } from "@/lib/disha/http";
 import { createProposal, listProposals } from "@/lib/disha/store";
 import type { ProposalType } from "@/lib/disha/types";
+import { requireRole } from "@/lib/supabase/authz";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await requireRole("manager");
     const body = await readJson(request);
     if (!body || typeof body !== "object" || !proposalTypes.has(body.type)) {
       throw new DishaApiError("Choose a supported sandbox action.", 400);

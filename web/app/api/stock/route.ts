@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { apiErrorResponse, readJson, DishaApiError } from "@/lib/disha/http";
 import { updateDemoState } from "@/lib/disha/store";
+import { requireRole } from "@/lib/supabase/authz";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    await requireRole("manager");
     const body = await readJson(request);
     if (typeof body?.onHand !== "number" && typeof body?.festivalMultiplier !== "number") {
       throw new DishaApiError("A stock count or festival multiplier is required.", 400);
