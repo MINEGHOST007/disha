@@ -1,4 +1,4 @@
-import { getCustomerSegments, predictStockout, reconcileDay } from "./engines";
+import { createReorderDraft, getCustomerSegments, predictStockout, reconcileDay } from "./engines";
 
 export type DemoSignal = "daily_run" | "new_bill" | "stock_change" | "voice_command";
 export type Intent = "STOCK_QUERY" | "CUSTOMER_STATUS" | "TODAY_PRIORITIES" | "APPROVE" | "REJECT" | "STOCK_UPDATE" | "UNKNOWN";
@@ -23,25 +23,45 @@ export function routeSignal(signal: DemoSignal) {
   return [...routes[signal]];
 }
 
+const defaultTeluguDigits = "౦౧౨౩౪౫౬౭౮౯";
+const teluguDigits = process.env.TE_DIGITS?.length === 10 ? process.env.TE_DIGITS : defaultTeluguDigits;
+
+export function normalizeVoiceDigits(input: string) {
+  return input.replace(/[౦-౯]/g, (digit) => String(teluguDigits.indexOf(digit)));
+}
+
+export function parseStockChange(input: string, currentOnHand: number) {
+  const text = normalizeVoiceDigits(input).toLocaleLowerCase();
+  const amount = Number(text.match(/\d+/)?.[0]);
+  if (!Number.isInteger(amount) || amount < 0) return null;
+  const delta = /\b(add|increase|reduce|decrease|remove|subtract)\b|జోడించ|తగ్గించ/.test(text);
+  if (delta) {
+    const negative = /\b(reduce|decrease|remove|subtract)\b|తగ్గించ/.test(text);
+    return negative ? -amount : amount;
+  }
+  const absolute = /\b(set|change|update)\b|మార్చ|సెట్/.test(text);
+  return absolute ? amount - currentOnHand : null;
+}
+
 export function classifyIntent(input: string): Intent {
-  const text = input.toLocaleLowerCase();
-  if (/\b(add|set|change|update)\b.*\b(stock|ghee|rice|sugar)\b|స్టాక్.*\d/.test(text)) return "STOCK_UPDATE";
+  const text = normalizeVoiceDigits(input).toLocaleLowerCase();
+  if (/\b(add|increase|reduce|decrease|remove|subtract|set|change|update)\b.*\b(stock|ghee|rice|sugar)\b|(?:స్టాక్|నెయ్యి).*\d|\d.*(?:స్టాక్|నెయ్యి)/.test(text)) return "STOCK_UPDATE";
   if (/\b(approve|yes,? do it|confirm)\b|ఆమోదించు/.test(text)) return "APPROVE";
   if (/\b(reject|no,? thanks|cancel)\b|వద్దు/.test(text)) return "REJECT";
   if (/\b(stock|inventory|ghee|rice|sugar)\b|స్టాక్|నెయ్యి/.test(text)) return "STOCK_QUERY";
-  if (/\b(customer|lakshmi|visit|balance)\b|కస్టమర్|లక్ష్మి/.test(text)) return "CUSTOMER_STATUS";
+  if (/\b(customers?|lakshmi|visit|balance)\b|కస్టమర్|లక్ష్మి/.test(text)) return "CUSTOMER_STATUS";
   if (/\b(today|priorities|briefing|sales)\b|ఈ రోజు|అమ్మకాలు/.test(text)) return "TODAY_PRIORITIES";
   return "UNKNOWN";
 }
 
-export function runDemoTool(name: string, input: { onHand?: number } = {}) {
+export function runDemoTool(name: string, input: { onHand?: number; billRecorded?: number } = {}) {
   switch (name) {
-    case "reconcile_day": return reconcileDay();
+    case "reconcile_day": return reconcileDay(input.billRecorded ?? 69);
     case "get_customer_segments": return getCustomerSegments();
     case "predict_stockout": return predictStockout(input.onHand ?? 5);
     case "project_cash_flow": return { status: "Phase 2", message: "Cash-flow projection is not part of this demo." };
     case "draft_whatsapp_message": return { status: "PROPOSED", simulated: true };
-    case "create_reorder_draft": return { status: "PROPOSED", quantity: predictStockout(input.onHand ?? 5).reorderQty };
+    case "create_reorder_draft": return { status: "PROPOSED", quantity: createReorderDraft(input.onHand ?? 5).quantity };
     case "update_stock_from_voice": return { status: "PROPOSED", onHand: input.onHand ?? 5, requiresApproval: true };
     default: throw new Error(`Unknown tool: ${name}`);
   }

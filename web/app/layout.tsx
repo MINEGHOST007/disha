@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Disha — Your shop, a little more in hand",
   description: "A calm, proactive business copilot for kirana merchants. Synthetic sandbox data only.",
   applicationName: "Disha",
+};
+
+export const viewport: Viewport = {
   themeColor: "#f8f7f2",
 };
 
