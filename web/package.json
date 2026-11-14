@@ -13,6 +13,7 @@
     "seed:check": "tsx scripts/seed-check.ts"
   },
   "dependencies": {
+    "@langchain/core": "^1.4.1",
     "@langchain/langgraph": "^1.7.4",
     "@langchain/openrouter": "^0.4.25",
     "@livekit/agents": "^1.10.0",

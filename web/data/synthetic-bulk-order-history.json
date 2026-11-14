@@ -1,0 +1,96 @@
+{
+  "dataset_metadata": {
+    "name": "Synthetic bulk-order history — sunflower oil",
+    "generated_for": "future bulk-order prediction model development",
+    "is_synthetic": true,
+    "as_of_date": "2026-11-14",
+    "record_count": 36,
+    "notes": "One SKU over 36 consecutive days. Sales and inventory deliberately vary; supplier receipts occur before stockout. The recommendation explanation uses only recent sales trend."
+  },
+  "merchant": {
+    "id": "merchant_demo_shanti",
+    "name": "Shanti General Store",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "timezone": "Asia/Kolkata",
+    "currency": "INR"
+  },
+  "product": {
+    "id": "sku_sunflower_oil_1l",
+    "merchant_id": "merchant_demo_shanti",
+    "name": "Sunflower oil 1 L",
+    "normalized_name": "sunflower oil 1 l",
+    "category": "edible_oil",
+    "brand": null,
+    "unit": "bottle",
+    "pack_size": 6,
+    "active": true
+  },
+  "supplier_product_terms": {
+    "merchant_id": "merchant_demo_shanti",
+    "supplier_id": "supplier_sri_lakshmi",
+    "product_id": "sku_sunflower_oil_1l",
+    "lead_time_days": 3,
+    "minimum_order_qty": 12,
+    "order_pack_size": 6,
+    "latest_unit_price": 112,
+    "available_from": "2026-10-01",
+    "available_to": null
+  },
+  "daily_product_snapshots": [
+    { "date": "2026-10-09", "opening_stock": 28, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 26, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-10", "opening_stock": 26, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 23, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-11", "opening_stock": 23, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 21, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-12", "opening_stock": 21, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 17, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-13", "opening_stock": 17, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 14, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-14", "opening_stock": 14, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 12, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-15", "opening_stock": 12, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 9, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-16", "opening_stock": 9, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 7, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-17", "opening_stock": 7, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 4, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-18", "opening_stock": 4, "units_received": 24, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 24, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-19", "opening_stock": 24, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 21, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-20", "opening_stock": 21, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 18, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-21", "opening_stock": 18, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 16, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-22", "opening_stock": 16, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 12, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-23", "opening_stock": 12, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 9, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-24", "opening_stock": 9, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 7, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-25", "opening_stock": 7, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 4, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-26", "opening_stock": 4, "units_received": 24, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 25, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-27", "opening_stock": 25, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 21, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-28", "opening_stock": 21, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 18, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-29", "opening_stock": 18, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 16, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-30", "opening_stock": 16, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 12, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-10-31", "opening_stock": 12, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 9, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-01", "opening_stock": 9, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 6, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-02", "opening_stock": 6, "units_received": 0, "units_sold": 2, "units_returned": 0, "units_wasted": 0, "closing_stock": 4, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-03", "opening_stock": 4, "units_received": 24, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 24, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-04", "opening_stock": 24, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 21, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-05", "opening_stock": 21, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 17, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-06", "opening_stock": 17, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 14, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-07", "opening_stock": 14, "units_received": 0, "units_sold": 5, "units_returned": 0, "units_wasted": 0, "closing_stock": 9, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-08", "opening_stock": 9, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 5, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-09", "opening_stock": 5, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 2, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-10", "opening_stock": 2, "units_received": 24, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 22, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-11", "opening_stock": 22, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 19, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-12", "opening_stock": 19, "units_received": 0, "units_sold": 4, "units_returned": 0, "units_wasted": 0, "closing_stock": 15, "stockout_flag": false, "stock_count_source": "manual" },
+    { "date": "2026-11-13", "opening_stock": 15, "units_received": 0, "units_sold": 3, "units_returned": 0, "units_wasted": 0, "closing_stock": 12, "stockout_flag": false, "stock_count_source": "manual" }
+  ],
+  "recommendation_preview": {
+    "prediction_date": "2026-11-14",
+    "horizon_days": 7,
+    "supplier_id": "supplier_sri_lakshmi",
+    "predicted_demand_during_lead_time": 12,
+    "safety_stock_units": 6,
+    "usable_stock_on_hand": 12,
+    "recommended_quantity": 6,
+    "reason": {
+      "recent_sales_trend": {
+        "lookback_days": 7,
+        "units_sold": 26,
+        "average_daily_sales": 3.71,
+        "trend_direction": "up",
+        "change_pct_vs_prior_period": 23.8
+      }
+    }
+  }
+}

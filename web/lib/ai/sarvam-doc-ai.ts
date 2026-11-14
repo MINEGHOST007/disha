@@ -43,7 +43,7 @@ export async function extractSupplierBill(file: { name: string; mime: string; by
 
   const terminal = new Set(["completed", "partially_completed", "failed", "rejected"]);
   let status = job.status.toLowerCase();
-  for (let attempt = 0; !terminal.has(status) && attempt < 18; attempt += 1) {
+  for (let attempt = 0; !terminal.has(status) && attempt < 45; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     status = (await client.docAi.getStatus(job.job_id, { timeoutInSeconds: 30, maxRetries: 1 })).status.toLowerCase();
   }
