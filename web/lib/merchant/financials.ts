@@ -107,6 +107,7 @@ export type KhataEntry = {
   paid_amount: number;
   created_at: string;
   due_date?: string | null;
+  contact_phone?: string | null;
   note?: string | null;
   closed_at?: string | null;
   auto_match: boolean;

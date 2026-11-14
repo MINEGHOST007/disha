@@ -16,8 +16,15 @@ Scope follows the merchant's latest direction: standalone merchant-supplied data
 - [x] Update setup/configuration docs and remove obsolete inventory claims.
 - [x] Migration 118 is applied: customer-alias writes and idempotent, alias-aware Khata auto-match are available. PostgREST probes reach its auth guards (401/42501) without changing data.
 - [x] Migration 119 is applied: DB invoice arithmetic accepts the same ₹1 rounding tolerance as merchant review.
-- [ ] Apply migration 120 (`supabase/migrations/20261120_supplier_confirmation_guard.sql`) to require seller confirmation before an order is marked placed or sent for review.
-- [x] Run tests (26 passing), lint, production build, and local HTTP smoke checks: sign-in redirect 307, auth page 200, tools route 200, protected STT route 401 without a session.
+- [x] Migration 120 confirmed by the merchant; it requires seller confirmation before an order is marked placed or sent for review.
+- [x] Migration 121 confirmed by the merchant; optional customer contact numbers and merchant-reviewed overdue reminder drafts are enabled.
+- [x] Migration 122 confirmed by the merchant; merchant-entered GST dues and merchant-recorded full or partial payments are enabled.
+- [x] Add GST due tracker UI and manager-only APIs; the tracker does not calculate tax, file returns, or submit money.
+- [x] Add read-only `get_gst_summary` tool for merchant questions about recorded GST due amounts and dates.
+- [ ] Apply migration 123 (`supabase/migrations/20261123_gst_agent_query_tool.sql`) to permit auditing the new GST query tool.
+- [x] Add deterministic supplier recommendations from lowest latest observed invoice rates, with source date and number of suppliers compared.
+- [x] Add a rerunnable, empty-workspace-only demo seed query with explicit DEMO labels and an in-app sample-data warning.
+- [x] Run tests (30 passing), lint and production build; verify the local demo walkthrough pages and capture the journey screenshots.
 - [x] Verify live OpenRouter inference and tool calling with a tool-capable model, plus Sarvam TTS→STT (HTTP 200; phrase transcribed; no merchant data sent).
 - [x] Verify Sarvam Vision OCR with a one-line synthetic invoice: job completed and extracted the test bill number, total and one item; nothing was saved to a merchant workspace.
 - [ ] Verify signed-in workspace flows and Sarvam STT with a merchant login and real speech sample.
@@ -26,12 +33,13 @@ Scope follows the merchant's latest direction: standalone merchant-supplied data
 ## External setup needed for live integrations
 
 - [x] Migration 119 confirmed by merchant in the connected Supabase project.
-- [ ] Apply migration 120 in the connected Supabase project.
+- [x] Apply migration 120 in the connected Supabase project (merchant confirmation).
+- [ ] Run migration 123, then optionally run `supabase/queries/seed_empty_workspaces_demo_data.sql` in the Supabase SQL editor.
 - [ ] Configure LiveKit URL/API key/API secret, an outbound SIP trunk ID/provider number, and start the Disha caller worker. Credentials are absent locally.
 
 ## Current limits
 
 - LiveKit URL/API credentials and an outbound SIP trunk are absent locally, so an actual supplier call cannot be exercised here.
 - OpenRouter inference and Sarvam TTS returned HTTP 200 on minimal generic requests. No merchant data was sent. Signed-in UI flows and Sarvam STT still need an authenticated session and speech sample.
-- Migrations 115–119 are applied. Migration 119 aligns database invoice validation with the UI’s ₹1 rounding tolerance; migration 120 adds a required seller-confirmation guard.
+- Migrations 115–122 are applied (merchant confirmed). Migration 119 aligns database invoice validation with the UI’s ₹1 arithmetic tolerance; migration 120 adds a required seller-confirmation guard; migration 121 enables Khata contact/reminder drafts; migration 122 enables GST due and payment tracking.
 - The app does not substitute sample merchant data when a workspace is empty.

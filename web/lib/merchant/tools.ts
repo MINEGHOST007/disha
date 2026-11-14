@@ -9,25 +9,26 @@ import { customerFrequency, DIGITAL_MODE, findPaymentsFrom, type MerchantTransac
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const safeError = "Merchant records could not be loaded. Check the Disha merchant growth migration and retry.";
-export const MERCHANT_DATA_TOOL_NAMES = ["find_payments_from","get_cashflow_summary","get_purchase_history","forecast_next_orders","get_customer_frequency","get_khata_summary"] as const;
+export const MERCHANT_DATA_TOOL_NAMES = ["find_payments_from","get_cashflow_summary","get_purchase_history","forecast_next_orders","get_customer_frequency","get_khata_summary","get_gst_summary"] as const;
 
 async function loadData(merchantId: string) {
   const supabase = await createClient();
-  const [suppliersResult,billsResult,linesResult,transactionsResult,aliasesResult,khataResult] = await Promise.all([
+  const [suppliersResult,billsResult,linesResult,transactionsResult,aliasesResult,khataResult,gstResult] = await Promise.all([
     supabase.from("disha_suppliers").select("id,name").eq("merchant_id",merchantId).limit(1000),
     supabase.from("disha_purchase_bills").select("id,supplier_id,bill_number,bill_date,total_amount,credit_days").eq("merchant_id",merchantId).order("bill_date",{ascending:true}).limit(5000),
     supabase.from("disha_purchase_bill_lines").select("purchase_bill_id,item_name,quantity,unit,unit_price,line_total").eq("merchant_id",merchantId).limit(10000),
     supabase.from("disha_transactions").select("id,occurred_at,customer_name,amount,mode,status").eq("merchant_id",merchantId).order("occurred_at",{ascending:false}).limit(10000),
     supabase.from("disha_customer_aliases").select("customer_name,alias").eq("merchant_id",merchantId).limit(5000),
     supabase.from("disha_khata_entries").select("id,customer_name,amount,paid_amount,due_date,auto_match,status,created_at").eq("merchant_id",merchantId).order("created_at",{ascending:false}).limit(5000),
+    supabase.from("disha_tax_obligations").select("tax_period,amount,paid_amount,due_date,payment_reference,note,status,paid_at").eq("merchant_id",merchantId).order("due_date",{ascending:true}).limit(500),
   ]);
-  if ([suppliersResult,billsResult,linesResult,transactionsResult,aliasesResult,khataResult].some((result)=>result.error)) throw new DishaApiError(safeError,503);
+  if ([suppliersResult,billsResult,linesResult,transactionsResult,aliasesResult,khataResult,gstResult].some((result)=>result.error)) throw new DishaApiError(safeError,503);
   const supplierNames=new Map((suppliersResult.data??[]).map((supplier)=>[supplier.id,supplier.name]));
   const linesByBill=new Map<string,typeof linesResult.data>();
   for(const line of linesResult.data??[]) linesByBill.set(line.purchase_bill_id,[...(linesByBill.get(line.purchase_bill_id)??[]),line]);
   const bills=(billsResult.data??[]).map((bill)=>({supplier_name:supplierNames.get(bill.supplier_id)??"Unknown supplier",bill_number:bill.bill_number,bill_date:bill.bill_date,total_amount:Number(bill.total_amount),credit_days:bill.credit_days,items:(linesByBill.get(bill.id)??[]).map((line)=>({name:line.item_name,quantity:Number(line.quantity),unit:line.unit,unit_price:Number(line.unit_price),line_total:Number(line.line_total)}))}));
   const transactions=(transactionsResult.data??[]).map((row)=>({id:row.id,ts:row.occurred_at,customer_name:row.customer_name,amount:Number(row.amount),mode:row.mode,status:row.status})) as MerchantTransaction[];
-  return {bills,transactions,aliases:aliasesResult.data??[],khata:(khataResult.data??[]).map((entry)=>({...entry,amount:Number(entry.amount),paid_amount:Number(entry.paid_amount)}))};
+  return {bills,transactions,aliases:aliasesResult.data??[],khata:(khataResult.data??[]).map((entry)=>({...entry,amount:Number(entry.amount),paid_amount:Number(entry.paid_amount)})),gst:(gstResult.data??[]).map((entry)=>({...entry,amount:Number(entry.amount),paid_amount:Number(entry.paid_amount)}))};
 }
 
 export function createMerchantDataTools(merchantId: string) {
@@ -59,5 +60,9 @@ export function createMerchantDataTools(merchantId: string) {
       const {khata}=await loadData(merchantId); const entries=khata.filter((entry)=>!status||entry.status===status);
       return JSON.stringify({entries:entries.map(({customer_name,amount,paid_amount,due_date,auto_match,status,created_at})=>({customer_name,amount,paid_amount,outstanding:amount-paid_amount,due_date,auto_match,status,created_at}))});
     },{name:"get_khata_summary",description:"Read open, partially paid, or closed merchant Khata reminders and outstanding balances.",schema:z.object({status:z.enum(["open","partially_paid","closed"]).optional()}).strict()}),
+    tool(async ({status})=>{
+      const {gst}=await loadData(merchantId); const entries=gst.filter((entry)=>!status||entry.status===status);
+      return JSON.stringify({entries:entries.map(({tax_period,amount,paid_amount,due_date,payment_reference,status})=>({tax_period,amount,outstanding:amount-paid_amount,due_date,payment_reference,status})),caveat:"These are merchant-entered GST due records. Disha does not calculate tax liability, file returns or submit payments."});
+    },{name:"get_gst_summary",description:"Read merchant-entered GST due periods, due dates, paid amounts and outstanding balances. State that Disha does not calculate tax, file returns or make payments.",schema:z.object({status:z.enum(["due","partially_paid","paid"]).optional()}).strict()}),
   ];
 }

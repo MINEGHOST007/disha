@@ -1,4 +1,5 @@
 node_modules/
+.playwright-cli/
 .env*.local
 vite.config.js.timestamp-*.mjs
 vite.config.mjs.timestamp-*.mjs

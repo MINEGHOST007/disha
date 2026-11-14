@@ -14,16 +14,17 @@ export default async function Home() {
   const workspace = await getWorkspaceContext();
   if (!workspace) redirect("/onboarding");
 
-  const [merchantResult, suppliersResult, purchaseBillsResult, purchaseLinesResult, transactionsResult, aliasesResult, khataResult, ordersResult, orderLinesResult, auditResult] = await Promise.all([
+  const [merchantResult, suppliersResult, purchaseBillsResult, purchaseLinesResult, transactionsResult, aliasesResult, khataResult, ordersResult, orderLinesResult, gstResult, auditResult] = await Promise.all([
     supabase.from("disha_merchants").select("name").eq("id", workspace.merchantId).maybeSingle(),
     supabase.from("disha_suppliers").select("id,name").eq("merchant_id", workspace.merchantId).limit(1000),
     supabase.from("disha_purchase_bills").select("id,supplier_id,bill_number,bill_date,total_amount,credit_days,source,source_file_name").eq("merchant_id", workspace.merchantId).order("bill_date", { ascending: true }).limit(5000),
     supabase.from("disha_purchase_bill_lines").select("purchase_bill_id,item_name,quantity,unit,unit_price,line_total").eq("merchant_id", workspace.merchantId).limit(10000),
     supabase.from("disha_transactions").select("id,occurred_at,customer_name,amount,mode,status").eq("merchant_id", workspace.merchantId).order("occurred_at", { ascending: false }).limit(10000),
     supabase.from("disha_customer_aliases").select("customer_name,alias").eq("merchant_id", workspace.merchantId).limit(5000),
-    supabase.from("disha_khata_entries").select("id,customer_name,amount,paid_amount,note,due_date,auto_match,status,created_at,closed_at").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(5000),
+    supabase.from("disha_khata_entries").select("id,customer_name,amount,paid_amount,note,due_date,contact_phone,auto_match,status,created_at,closed_at").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(5000),
     supabase.from("disha_order_drafts").select("id,supplier_name,supplier_phone,order_date,status,order_total,call_status,seller_confirmation,created_at").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(200),
     supabase.from("disha_order_draft_lines").select("order_id,item_name,quantity,unit,unit_price,line_total").eq("merchant_id", workspace.merchantId).limit(5000),
+    supabase.from("disha_tax_obligations").select("id,tax_period,amount,paid_amount,due_date,payment_reference,note,status,created_at,paid_at").eq("merchant_id", workspace.merchantId).order("due_date", { ascending: false }).limit(500),
     supabase.from("disha_audit_log").select("id,created_at,actor,tool,decision,outcome,facts").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(50),
   ]);
   const schemaReady = [suppliersResult,purchaseBillsResult,purchaseLinesResult,transactionsResult,aliasesResult,khataResult,ordersResult,orderLinesResult].every((result) => !result.error);
@@ -41,7 +42,12 @@ export default async function Home() {
   const transactions = (transactionsResult.data ?? []).map((row) => ({ id: row.id, ts: row.occurred_at, customer_name: row.customer_name, amount: Number(row.amount), mode: row.mode, status: row.status }));
   const aliases = aliasesResult.data ?? [];
   const khata = (khataResult.data ?? []).map((row) => ({ ...row, amount: Number(row.amount), paid_amount: Number(row.paid_amount) }));
+  const demoData = (purchaseBillsResult.data ?? []).some((bill) => bill.bill_number.startsWith("DEMO-"))
+    || (transactionsResult.data ?? []).some((row) => row.id && "external_id" in row && String(row.external_id).startsWith("DEMO-TX-"))
+    || khata.some((row) => row.note?.startsWith("[DEMO DATA]"))
+    || (auditResult.data ?? []).some((event) => event.tool === "demo_data_seed");
   const orders = (ordersResult.data ?? []).map((order) => ({ ...order, order_total: Number(order.order_total), lines: (orderLinesResult.data ?? []).filter((line) => line.order_id === order.id).map((line) => ({ ...line, quantity: Number(line.quantity), unit_price: Number(line.unit_price), line_total: Number(line.line_total) })) }));
+  const gstObligations = (gstResult.data ?? []).map((row) => ({ ...row, amount:Number(row.amount), paid_amount:Number(row.paid_amount) }));
   const forecast = buildPurchaseForecast(purchaseBills);
   const asOfDate = new Date().toISOString().slice(0, 10);
   const nearestOrder = forecast.lines[0];
@@ -51,6 +57,9 @@ export default async function Home() {
     merchantName={merchantResult.data?.name ?? "Your store"}
     supplierCallMode={process.env.LIVEKIT_MODE?.trim().toLowerCase() === "live" ? "live" : "stub"}
     schemaReady={schemaReady}
+    demoData={demoData}
+    gstReady={!gstResult.error}
+    gstObligations={gstObligations}
     role={workspace.role}
     purchaseBills={purchaseBills}
     forecast={forecast}

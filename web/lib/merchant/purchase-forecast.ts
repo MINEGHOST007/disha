@@ -41,6 +41,15 @@ export type PurchaseForecastResult = {
   not_reordered_last_cycle: Array<{ supplier_name: string; item_name: string; unit: string; last_purchased: string }>;
 };
 
+export type SupplierRecommendation = {
+  item_name: string;
+  unit: string;
+  supplier_name: string;
+  latest_rate: number;
+  bill_date: string;
+  suppliers_compared: number;
+};
+
 const DAY_MS = 86_400_000;
 export const AS_OF_DATE = process.env.AS_OF_DATE ?? "2026-11-14";
 
@@ -174,4 +183,32 @@ export function buildPurchaseForecast(bills: PurchaseBill[]): PurchaseForecastRe
     }
   }
   return { lines: lines.sort((a, b) => a.next_order_date.localeCompare(b.next_order_date) || a.supplier_name.localeCompare(b.supplier_name) || a.item_name.localeCompare(b.item_name)), needs_one_more_bill, not_reordered_last_cycle };
+}
+
+/** Suggest only suppliers that appear in uploaded merchant bills, using their latest observed rate. */
+export function suggestSuppliers(bills: PurchaseBill[], forecast: PurchaseForecastResult): SupplierRecommendation[] {
+  const latestByItemSupplier = new Map<string, Map<string, { supplier: string; rate: number; date: string }>>();
+  for (const bill of bills) {
+    for (const line of bill.items) {
+      const itemKey = `${normalizeAlias(line.name)}::${normalizeAlias(line.unit)}`;
+      const supplierKey = normalizeAlias(bill.supplier_name);
+      const suppliers = latestByItemSupplier.get(itemKey) ?? new Map();
+      const previous = suppliers.get(supplierKey);
+      if (!previous || bill.bill_date > previous.date || (bill.bill_date === previous.date && line.unit_price < previous.rate)) {
+        suppliers.set(supplierKey, { supplier: bill.supplier_name, rate: line.unit_price, date: bill.bill_date });
+      }
+      latestByItemSupplier.set(itemKey, suppliers);
+    }
+  }
+
+  const seen = new Set<string>();
+  return forecast.lines.flatMap((line) => {
+    const itemKey = `${normalizeAlias(line.item_name)}::${normalizeAlias(line.unit)}`;
+    if (seen.has(itemKey)) return [];
+    seen.add(itemKey);
+    const suppliers = [...(latestByItemSupplier.get(itemKey)?.values() ?? [])]
+      .sort((a, b) => a.rate - b.rate || b.date.localeCompare(a.date) || a.supplier.localeCompare(b.supplier));
+    const recommended = suppliers[0];
+    return recommended ? [{ item_name: line.item_name, unit: line.unit, supplier_name: recommended.supplier, latest_rate: recommended.rate, bill_date: recommended.date, suppliers_compared: suppliers.length }] : [];
+  }).sort((a, b) => a.item_name.localeCompare(b.item_name));
 }
