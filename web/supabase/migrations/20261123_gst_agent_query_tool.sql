@@ -6,7 +6,7 @@ begin
   if v_user_id is null then raise exception using errcode='28000',message='authentication required'; end if;
   if p_tools is null or jsonb_typeof(p_tools)<>'array' or jsonb_array_length(p_tools)>12 or p_language not in ('en','te')
     or exists(select 1 from jsonb_array_elements(p_tools) item where jsonb_typeof(item)<>'string'
-      or item #>> '{}' not in ('find_payments_from','get_cashflow_summary','get_purchase_history','forecast_next_orders','get_customer_frequency','get_khata_summary','get_gst_summary')) then
+      or item #>> '{}' not in ('find_payments_from','get_cashflow_summary','get_purchase_history','forecast_next_orders','get_customer_frequency','get_khata_summary','get_gst_summary','forecast_regional_festival_order')) then
     raise exception using errcode='22023',message='invalid query audit facts';
   end if;
   select merchant_id into v_merchant_id from public.disha_merchant_members where user_id=v_user_id order by created_at limit 1;

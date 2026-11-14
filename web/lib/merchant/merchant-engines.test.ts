@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPurchaseForecast, suggestSuppliers, validatePurchaseBill, type PurchaseBill } from "./purchase-forecast";
+import { buildPurchaseForecast, isFestivalScenarioActive, seasonalOrderQuantity, suggestSuppliers, validatePurchaseBill, type PurchaseBill } from "./purchase-forecast";
 import { customerFrequency, matchTransactionToKhata, projectCashFlow, type KhataEntry, type MerchantTransaction } from "./financials";
 
 const rows = [
@@ -51,6 +51,14 @@ describe("supplier bill and forecast engines", () => {
     const bills = [makeBill("2026-09-20", "SLT-0417", false), lakshmi, other];
     const suggestions = suggestSuppliers(bills, buildPurchaseForecast(bills));
     expect(suggestions.find((item) => item.item_name === "Ghee 500 ml")).toMatchObject({ supplier_name: "Market King", latest_rate: 280, suppliers_compared: 2 });
+  });
+
+  it("applies a saved festival estimate only before the next order and rounds to packs", () => {
+    expect(isFestivalScenarioActive("2026-11-28", "2026-11-14", "2026-12-12")).toBe(true);
+    expect(isFestivalScenarioActive("2026-12-20", "2026-11-14", "2026-12-12")).toBe(false);
+    expect(seasonalOrderQuantity(41, 12, 20, true)).toBe(60);
+    expect(seasonalOrderQuantity(41, 12, 20, false)).toBe(41);
+    expect(() => seasonalOrderQuantity(41, 12, 201, true)).toThrow(RangeError);
   });
 });
 

@@ -59,7 +59,24 @@
 - Product matching is based on merchant bill history; differently packed or named products may not be comparable. The merchant reviews the suggestion.
 - A future supplier network could offer opt-in discovery or qualified referrals. Recommendations must remain ranked by merchant value and disclose paid placements. Do not sell a higher ranking.
 
-## Journey 3 — Keep Khata as a follow-up to-do list
+## Journey 3 — Adjust an order for a local festival
+
+**Primary user:** shop owner who knows a local festival or event changes demand at their store.
+**Job:** “My next order falls before our local festival. Help me plan a little extra, but show the normal bill-based number too.”
+
+### Steps
+
+1. On **Orders**, enter the store state and district, local festival/event name and date.
+2. Enter an expected uplift from the merchant’s own experience or prior bills. Disha stores this as a merchant estimate; there is no regional demand feed or national benchmark today.
+3. If the event date is between today and an item’s predicted next-order date, the forecast applies the entered uplift to the baseline quantity and rounds up to the latest pack size.
+4. Review both quantities, edit the suggested amount and save or print the order draft.
+5. If the event does not fall before the next order date, the baseline remains unchanged.
+
+![Orders screen with a local event and editable seasonal forecast scenario](assets/journey-seasonal-order.png)
+
+**Calibration path:** as merchants add historical bills and tag them to local events, Disha can later compare event-period purchases with ordinary cycles and replace the manual uplift with a merchant-specific estimate. The current version does not claim to have completed that learning step.
+
+## Journey 4 — Keep Khata as a follow-up to-do list
 
 **Primary user:** owner who gives familiar customers goods on credit and needs a simple list of what is outstanding.
 **Job:** “Who owes me, how much is late, and can I send a polite reminder?”
@@ -77,7 +94,7 @@
 
 **No-contact rule:** Disha does not send a reminder automatically. No phone number is fabricated in demo records.
 
-## Journey 4 — Track GST due dates and record payments
+## Journey 5 — Track GST due dates and record payments
 
 **Primary user:** owner who has already obtained the payable amount and deadline from their accountant or tax portal.
 **Job:** “Help me remember what is due and keep a record after I pay.”
@@ -94,7 +111,7 @@
 
 ![GST screen: enter a due from the merchant's own tax source and record payment](assets/journey-gst.png)
 
-## Journey 5 — Ask questions about cash flow and customers
+## Journey 6 — Ask questions about cash flow and customers
 
 **Primary user:** shop owner who has CSV transaction exports but does not want to search row by row.
 **Job:** “Did Ramesh pay? What did I collect? Who is paying less often?”
@@ -135,7 +152,7 @@ Optional SQL seed: [`../../web/supabase/queries/seed_empty_workspaces_demo_data.
 
 ## Current external dependencies
 
-- Supabase migrations 120–122 are confirmed run by the merchant; migration 122 enables the GST tracker. Migration 123 is needed for auditing the new GST question tool in Ask Disha.
+- Supabase migrations 120–122 are confirmed run by the merchant; migration 122 enables GST. Run migration 124 for the regional scenario table and the final assistant audit allowlist (it includes the GST query tool added in 123).
 - OpenRouter and Sarvam secrets must be configured server-side for live agent, OCR and speech paths.
 - Live supplier calling is not enabled in the local demo; the stub never contacts a supplier.
 - No Paytm API is connected. Transaction CSVs are merchant-provided.

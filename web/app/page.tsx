@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { MerchantWorkspace } from "@/components/merchant-workspace";
-import { buildPurchaseForecast } from "@/lib/merchant/purchase-forecast";
+import { buildPurchaseForecast, isFestivalScenarioActive, seasonalOrderQuantity } from "@/lib/merchant/purchase-forecast";
 import { customerFrequency, projectCashFlow } from "@/lib/merchant/financials";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceContext } from "@/lib/supabase/authz";
@@ -14,7 +14,7 @@ export default async function Home() {
   const workspace = await getWorkspaceContext();
   if (!workspace) redirect("/onboarding");
 
-  const [merchantResult, suppliersResult, purchaseBillsResult, purchaseLinesResult, transactionsResult, aliasesResult, khataResult, ordersResult, orderLinesResult, gstResult, auditResult] = await Promise.all([
+  const [merchantResult, suppliersResult, purchaseBillsResult, purchaseLinesResult, transactionsResult, aliasesResult, khataResult, ordersResult, orderLinesResult, gstResult, seasonalResult, auditResult] = await Promise.all([
     supabase.from("disha_merchants").select("name").eq("id", workspace.merchantId).maybeSingle(),
     supabase.from("disha_suppliers").select("id,name").eq("merchant_id", workspace.merchantId).limit(1000),
     supabase.from("disha_purchase_bills").select("id,supplier_id,bill_number,bill_date,total_amount,credit_days,source,source_file_name").eq("merchant_id", workspace.merchantId).order("bill_date", { ascending: true }).limit(5000),
@@ -25,6 +25,7 @@ export default async function Home() {
     supabase.from("disha_order_drafts").select("id,supplier_name,supplier_phone,order_date,status,order_total,call_status,seller_confirmation,created_at").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(200),
     supabase.from("disha_order_draft_lines").select("order_id,item_name,quantity,unit,unit_price,line_total").eq("merchant_id", workspace.merchantId).limit(5000),
     supabase.from("disha_tax_obligations").select("id,tax_period,amount,paid_amount,due_date,payment_reference,note,status,created_at,paid_at").eq("merchant_id", workspace.merchantId).order("due_date", { ascending: false }).limit(500),
+    supabase.from("disha_seasonal_order_scenarios").select("state,district,festival_name,event_date,uplift_percent,source").eq("merchant_id",workspace.merchantId).maybeSingle(),
     supabase.from("disha_audit_log").select("id,created_at,actor,tool,decision,outcome,facts").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(50),
   ]);
   const schemaReady = [suppliersResult,purchaseBillsResult,purchaseLinesResult,transactionsResult,aliasesResult,khataResult,ordersResult,orderLinesResult].every((result) => !result.error);
@@ -48,10 +49,16 @@ export default async function Home() {
     || (auditResult.data ?? []).some((event) => event.tool === "demo_data_seed");
   const orders = (ordersResult.data ?? []).map((order) => ({ ...order, order_total: Number(order.order_total), lines: (orderLinesResult.data ?? []).filter((line) => line.order_id === order.id).map((line) => ({ ...line, quantity: Number(line.quantity), unit_price: Number(line.unit_price), line_total: Number(line.line_total) })) }));
   const gstObligations = (gstResult.data ?? []).map((row) => ({ ...row, amount:Number(row.amount), paid_amount:Number(row.paid_amount) }));
+  const seasonalScenario = seasonalResult.data ? { ...seasonalResult.data, uplift_percent:Number(seasonalResult.data.uplift_percent) } : null;
   const forecast = buildPurchaseForecast(purchaseBills);
-  const asOfDate = new Date().toISOString().slice(0, 10);
-  const nearestOrder = forecast.lines[0];
-  const cashFlow = projectCashFlow(nearestOrder ? forecast.lines.reduce((sum, line) => sum + line.estimated_order_value, 0) : 0, nearestOrder?.credit_days ?? 7, transactions, asOfDate);
+  const asOfDate = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata"}).format(new Date());
+  const scenarioLines = forecast.lines.map((line) => {
+    const applies=isFestivalScenarioActive(seasonalScenario?.event_date??null,asOfDate,line.next_order_date);
+    const quantity=seasonalOrderQuantity(line.predicted_quantity,line.pack_size,seasonalScenario?.uplift_percent??0,applies);
+    return {...line,estimated_order_value:quantity*line.unit_price};
+  });
+  const nearestOrder = scenarioLines[0];
+  const cashFlow = projectCashFlow(nearestOrder ? scenarioLines.reduce((sum, line) => sum + line.estimated_order_value, 0) : 0, nearestOrder?.credit_days ?? 7, transactions, asOfDate);
   const customers = customerFrequency(transactions, aliases, asOfDate);
   return <MerchantWorkspace
     merchantName={merchantResult.data?.name ?? "Your store"}
@@ -60,6 +67,8 @@ export default async function Home() {
     demoData={demoData}
     gstReady={!gstResult.error}
     gstObligations={gstObligations}
+    seasonalScenarioReady={!seasonalResult.error}
+    seasonalScenario={seasonalScenario}
     role={workspace.role}
     purchaseBills={purchaseBills}
     forecast={forecast}

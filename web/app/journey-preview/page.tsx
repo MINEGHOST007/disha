@@ -34,5 +34,6 @@ export default async function JourneyPreview({ searchParams }: { searchParams: P
   const customers = customerFrequency(transactions, [], isoDay(0));
   const cashFlow = projectCashFlow(forecast.lines.reduce((sum,line)=>sum+line.estimated_order_value,0),7,transactions,isoDay(0));
   const gstObligations=[{id:"preview-gst-1",tax_period:"Oct 2026",amount:5200,paid_amount:0,due_date:isoDay(6),payment_reference:null,note:"Entered from merchant's GST portal",status:"due" as const,created_at:`${isoDay(-1)}T09:00:00Z`,paid_at:null}];
-  return <MerchantWorkspace merchantName="Shanti General Store" schemaReady gstReady gstObligations={gstObligations} demoData initialTab={initialTab} role="manager" supplierCallMode="stub" purchaseBills={purchaseBills} forecast={forecast} transactions={transactions} cashFlow={cashFlow} khata={khata} orders={[]} customers={customers} aliases={[]} audit={[]} />;
+  const seasonalScenario={state:"Telangana",district:"Hyderabad",festival_name:"Local festival (demo scenario)",event_date:isoDay(10),uplift_percent:20,source:"merchant_estimate" as const};
+  return <MerchantWorkspace merchantName="Shanti General Store" schemaReady gstReady gstObligations={gstObligations} seasonalScenarioReady seasonalScenario={seasonalScenario} demoData initialTab={initialTab} role="manager" supplierCallMode="stub" purchaseBills={purchaseBills} forecast={forecast} transactions={transactions} cashFlow={cashFlow} khata={khata} orders={[]} customers={customers} aliases={[]} audit={[]} />;
 }

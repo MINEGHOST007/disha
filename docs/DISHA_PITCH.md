@@ -22,6 +22,12 @@ For each forecast item, Disha compares the latest matching rates across supplier
 - **Supplier referrals:** optional, disclosed introductions to suppliers. Any referral revenue must never change or conceal the evidence-based recommendation order.
 - Keep setup and core record portability simple for small shops; validate pricing with a merchant pilot before claiming revenue.
 
+### Local festival planning
+
+The merchant can add their state, district, local event date and expected uplift. When that event falls before the predicted order, Disha shows an adjusted quantity beside the normal bill-based baseline. Today the uplift is the merchant’s estimate; regional demand learning needs tagged historical bills.
+
+![Local event adjustment in the next-order forecast](user-journeys/assets/journey-seasonal-order.png)
+
 ## Slide 4 — Khata becomes a follow-up to-do list
 
 Add who owes what, when it is due and a phone number if available. Disha highlights overdue balances and drafts a polite WhatsApp message for review. The merchant sends it; no message goes out automatically. Partial payments update the balance and paid entries remain in closed history.

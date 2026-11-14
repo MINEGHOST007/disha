@@ -81,6 +81,12 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      disha_seasonal_order_scenarios: {
+        Row:{id:string;merchant_id:string;state:string;district:string;festival_name:string;event_date:string;uplift_percent:number;source:"merchant_estimate"|"merchant_history";updated_at:string};
+        Insert:never;
+        Update:never;
+        Relationships:[];
+      };
       disha_order_drafts: {
         Row: { id: string; merchant_id: string; supplier_name: string; supplier_phone: string | null; order_date: string | null; status: "draft" | "approved" | "calling" | "placed" | "needs_review" | "cancelled"; order_total: number; call_room: string | null; call_status: string | null; seller_confirmation: string | null; approved_at: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; merchant_id: string; supplier_name: string; supplier_phone?: string | null; order_date?: string | null; status?: "draft" | "approved" | "calling" | "placed" | "needs_review" | "cancelled"; order_total?: number; call_room?: string | null; call_status?: string | null; seller_confirmation?: string | null; approved_at?: string | null; created_at?: string; updated_at?: string };
@@ -137,6 +143,7 @@ export type Database = {
       disha_create_khata_with_phone: { Args: { p_customer: string; p_amount: number; p_due: string | null; p_auto: boolean; p_note: string | null; p_phone: string | null }; Returns: string };
       disha_create_tax_obligation: { Args: { p_period:string; p_amount:number; p_due:string; p_note?:string|null }; Returns:string };
       disha_record_tax_payment: { Args: { p_id:string; p_amount?:number|null; p_reference?:string|null }; Returns:Json };
+      disha_save_seasonal_order_scenario: { Args: { p_state:string; p_district:string; p_festival:string; p_event_date:string; p_uplift_percent:number }; Returns:Json };
       disha_settle_khata: { Args: { p_entry: string; p_amount: number | null }; Returns: Json };
       disha_save_order_draft: { Args: { p_supplier: string; p_phone: string | null; p_order_date: string | null; p_lines: Json; p_approve?: boolean }; Returns: string };
       disha_approve_order: { Args: { p_order: string }; Returns: Json };

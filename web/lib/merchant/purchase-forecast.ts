@@ -50,6 +50,19 @@ export type SupplierRecommendation = {
   suppliers_compared: number;
 };
 
+export function isFestivalScenarioActive(eventDate: string | null, asOfDate: string, nextOrderDate: string) {
+  return Boolean(eventDate && validIsoDate(eventDate) && eventDate >= asOfDate && eventDate <= nextOrderDate);
+}
+
+/** Apply only a merchant-entered scenario uplift; preserve pack multiples and return baseline when inactive. */
+export function seasonalOrderQuantity(baseQuantity: number, packSize: number, upliftPercent: number, active: boolean) {
+  if (!Number.isFinite(baseQuantity) || baseQuantity < 0 || !Number.isFinite(packSize) || packSize <= 0 || !Number.isFinite(upliftPercent) || upliftPercent < 0 || upliftPercent > 200) {
+    throw new RangeError("Invalid seasonal order scenario inputs.");
+  }
+  if (!active || upliftPercent === 0) return baseQuantity;
+  return Math.ceil((baseQuantity * (1 + upliftPercent / 100)) / packSize) * packSize;
+}
+
 const DAY_MS = 86_400_000;
 export const AS_OF_DATE = process.env.AS_OF_DATE ?? "2026-11-14";
 
