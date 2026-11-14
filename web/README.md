@@ -17,7 +17,7 @@ Disha is a standalone merchant growth workspace. Merchants import their own supp
 Use Node.js 22 or newer.
 
 1. Copy `.env.example` to `.env.local`. Configure Supabase URL and publishable key, `OPENROUTER_API_KEY`, and `SARVAM_API_KEY`. The server also accepts the local environment aliases `OPENROUTER` and `SARVAM`. The agent defaults to `openai/gpt-4o-mini` for tool calling; set `OPENROUTER_AGENT_MODEL` to another model that supports tools. `OPENROUTER_MODEL` remains for narration, and `OPENROUTER_VISION_MODEL` is for invoice-image fallback. Keep credentials out of source control.
-2. Apply the SQL migrations in `supabase/migrations` in filename order. The connected Supabase project is confirmed through migration 119. Migrations 115–119 provide purchase bills, merchant transactions, Khata and order workflows, customer aliases, and the invoice rounding tolerance. Do not run a schema dump labeled “context only.”
+2. Apply the SQL migrations in `supabase/migrations` in filename order. The connected Supabase project is confirmed through migration 119; apply `20261120_supplier_confirmation_guard.sql` before using seller-call outcome recording. Migrations 115–119 provide purchase bills, merchant transactions, Khata and order workflows, customer aliases, and invoice rounding tolerance. Migration 120 requires seller confirmation for placed/review outcomes. Do not run a schema dump labeled “context only.”
 3. Install packages and start the web app:
 
    ```bash

@@ -105,6 +105,10 @@ export function MerchantWorkspace(props: Props) {
   async function recordCallResult(id: string, result: "placed" | "needs_review" | "cancelled") {
     const confirmation = window.prompt("What did the seller say? Include any changed quantity or price so you can review it.");
     if (confirmation === null) return;
+    if (result !== "cancelled" && !confirmation.trim()) {
+      setError("Enter the seller’s confirmation before recording this outcome.");
+      return;
+    }
     setBusy("order"); setError("");
     try { await readResponse(await fetch(`/api/orders/${id}/result`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ result, confirmation }) })); setNotice(result === "placed" ? "Seller-confirmed order marked placed." : `Order marked ${result.replaceAll("_", " ")}.`); router.refresh(); }
     catch (cause) { fail(cause); } finally { setBusy(""); }

@@ -16,6 +16,7 @@ Scope follows the merchant's latest direction: standalone merchant-supplied data
 - [x] Update setup/configuration docs and remove obsolete inventory claims.
 - [x] Migration 118 is applied: customer-alias writes and idempotent, alias-aware Khata auto-match are available. PostgREST probes reach its auth guards (401/42501) without changing data.
 - [x] Migration 119 is applied: DB invoice arithmetic accepts the same ₹1 rounding tolerance as merchant review.
+- [ ] Apply migration 120 (`supabase/migrations/20261120_supplier_confirmation_guard.sql`) to require seller confirmation before an order is marked placed or sent for review.
 - [x] Run tests (26 passing), lint, production build, and local HTTP smoke checks: sign-in redirect 307, auth page 200, tools route 200, protected STT route 401 without a session.
 - [x] Verify live OpenRouter inference and tool calling with a tool-capable model, plus Sarvam TTS→STT (HTTP 200; phrase transcribed; no merchant data sent).
 - [x] Verify Sarvam Vision OCR with a one-line synthetic invoice: job completed and extracted the test bill number, total and one item; nothing was saved to a merchant workspace.
@@ -25,11 +26,12 @@ Scope follows the merchant's latest direction: standalone merchant-supplied data
 ## External setup needed for live integrations
 
 - [x] Migration 119 confirmed by merchant in the connected Supabase project.
+- [ ] Apply migration 120 in the connected Supabase project.
 - [ ] Configure LiveKit URL/API key/API secret, an outbound SIP trunk ID/provider number, and start the Disha caller worker. Credentials are absent locally.
 
 ## Current limits
 
 - LiveKit URL/API credentials and an outbound SIP trunk are absent locally, so an actual supplier call cannot be exercised here.
 - OpenRouter inference and Sarvam TTS returned HTTP 200 on minimal generic requests. No merchant data was sent. Signed-in UI flows and Sarvam STT still need an authenticated session and speech sample.
-- Migrations 115–119 are applied. Migration 119 aligns database invoice validation with the UI’s ₹1 rounding tolerance.
+- Migrations 115–119 are applied. Migration 119 aligns database invoice validation with the UI’s ₹1 rounding tolerance; migration 120 adds a required seller-confirmation guard.
 - The app does not substitute sample merchant data when a workspace is empty.
