@@ -200,3 +200,31 @@ h1 { color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-siz
 .recent-bills td { color: #435047; padding: 11px 9px; border-bottom: 1px solid #f0f2ef; }
 @media (max-width: 760px) { .merchant-content { padding: 26px 16px 56px; }.merchant-topbar { height: 65px; padding: 0 16px; }.merchant-grid { grid-template-columns: 1fr; }.merchant-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }.merchant-welcome { align-items: flex-start; flex-direction: column; gap: 12px; }.inventory-row { grid-template-columns: 1fr .7fr .7fr; }.row-remove { grid-column: 1 / -1; justify-self: end; height: 26px; }.manual-row { grid-template-columns: 1fr 1fr; }.merchant-ask-form { align-items: stretch; flex-direction: column; }.merchant-ask-form .merchant-primary { width: 100%; }.merchant-panel { padding: 17px; } }
 @media (max-width: 420px) { .merchant-account { font-size: 11px; gap: 6px; }.merchant-role { padding-left: 8px; }.merchant-metrics article { padding: 14px; }.merchant-metrics article strong { font-size: 22px; }.inventory-row { grid-template-columns: 1fr 1fr; }.inventory-row label:first-child { grid-column: 1 / -1; } }
+
+.merchant-tabs { display:flex; gap:8px; overflow-x:auto; padding:4px 0 16px; margin:8px 0 12px; scrollbar-width:thin; }
+.merchant-tabs button { flex:0 0 auto; border:1px solid #dbe5f3; background:#fff; color:#334155; border-radius:999px; padding:10px 16px; font-weight:650; cursor:pointer; }
+.merchant-tabs button.active { background:#123b82; border-color:#123b82; color:#fff; }
+.forecast-group { border-top:1px solid #e9eef5; padding-top:16px; margin-top:18px; }
+.forecast-group h3 { margin:0 0 10px; }
+.order-actions,.khata-form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin-top:14px; }
+.order-actions label,.khata-form label { display:grid; gap:6px; color:#475569; font-size:13px; font-weight:600; }
+.order-actions input,.khata-form input { min-height:42px; border:1px solid #ccd6e4; border-radius:9px; padding:9px 12px; color:#0f172a; }
+.khata-form > label:not(.checkbox-label) { flex:1 1 180px; }
+.khata-form .checkbox-label { display:flex; flex-direction:row; align-items:center; flex:1 0 100%; }
+.khata-form .checkbox-label input { width:18px; min-height:18px; }
+.order-card,.khata-row { display:grid; grid-template-columns:minmax(150px,1fr) auto auto; gap:12px; align-items:center; border-top:1px solid #e8edf5; padding:14px 0; }
+.order-card > div,.khata-row > div { display:grid; gap:4px; }
+.order-card span,.khata-row span,.khata-row small { color:#64748b; font-size:13px; }
+.order-card ul { grid-column:1/-1; margin:0; padding-left:18px; color:#475569; }
+.review-bill { border-top:1px solid #e8edf5; padding:14px 0; }
+.review-bill h3 { margin:0 0 10px; }
+.invoice-edit-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+.invoice-edit-fields label { display:grid; gap:5px; color:#475569; font-size:12px; font-weight:600; }
+.invoice-edit-fields input,.review-bill td input,.quantity-edit { min-width:70px; width:100%; height:37px; border:1px solid #ccd6e4; border-radius:7px; padding:0 8px; color:#0f172a; background:#fff; }
+.quantity-edit { width:84px; margin-right:6px; }
+.review-bill table { width:100%; border-collapse:collapse; font-size:12px; }
+.review-bill th,.review-bill td { padding:7px; border-bottom:1px solid #e8edf5; text-align:left; }
+.voice-controls { display:flex; align-items:center; gap:12px; margin:8px 0 14px; }
+.voice-controls small { color:#64748b; font-size:12px; }
+.schema-warning { border:1px solid #f2c94c; background:#fffbeb; }
+@media (max-width:720px) { .merchant-tabs { margin-inline:-4px; } .order-card,.khata-row { grid-template-columns:1fr auto; } .order-card > button,.khata-row > button { grid-column:2; } .voice-controls { align-items:flex-start; flex-direction:column; } .invoice-edit-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }

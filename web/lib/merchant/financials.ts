@@ -117,7 +117,7 @@ export type KhataAllocation = { entry_id: string; transaction_id: string; amount
 
 /** Allocate a newly imported successful payment to the oldest matching enabled Khata entries. */
 export function matchTransactionToKhata(entries: KhataEntry[], transaction: MerchantTransaction, aliases: CustomerAlias[]) {
-  if (transaction.status !== "success" || !DIGITAL_MODE.test(transaction.mode)) return { entries, allocations: [] as KhataAllocation[] };
+  if (transaction.status !== "success") return { entries, allocations: [] as KhataAllocation[] };
   const aliasNames = new Map<string, string>();
   for (const alias of aliases) {
     aliasNames.set(normalizeAlias(alias.alias), normalizeAlias(alias.customer_name));

@@ -85,4 +85,10 @@ describe("Khata payment allocation", () => {
     expect(matched.allocations.map((allocation) => allocation.amount)).toEqual([600, 250]);
     expect(matched.entries.map((entry) => entry.status)).toEqual(["closed", "partially_paid"]);
   });
+
+  it("matches any successfully recorded payment mode to Khata", () => {
+    const entry: KhataEntry = { id:"cash-entry",customer_name:"Ramesh",amount:300,paid_amount:0,created_at:"2026-11-01T00:00:00Z",auto_match:true,status:"open" };
+    const cash = { ...transaction("cash", "2026-11-02T10:00:00Z", "Ramesh", 300), mode:"cash" };
+    expect(matchTransactionToKhata([entry],cash,[]).entries[0]?.status).toBe("closed");
+  });
 });

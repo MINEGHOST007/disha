@@ -131,6 +131,9 @@ export type Database = {
       disha_settle_khata: { Args: { p_entry: string; p_amount: number | null }; Returns: Json };
       disha_save_order_draft: { Args: { p_supplier: string; p_phone: string | null; p_order_date: string | null; p_lines: Json; p_approve?: boolean }; Returns: string };
       disha_approve_order: { Args: { p_order: string }; Returns: Json };
+      disha_start_supplier_call: { Args: { p_order: string }; Returns: Json };
+      disha_record_supplier_call: { Args: { p_order: string; p_result: string; p_confirmation: string }; Returns: Json };
+      disha_save_customer_alias: { Args: { p_customer: string; p_alias: string }; Returns: string };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

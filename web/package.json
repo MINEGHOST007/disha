@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "caller:dev": "tsx livekit-caller.ts dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

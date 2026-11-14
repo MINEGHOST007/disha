@@ -1,24 +1,10 @@
-# Disha local integration status
+# Current integration limits
 
-Disha is being converted into a standalone merchant workspace. Merchants supply their own bill exports and inventory records; there is no POS, Paytm, or bank connector. Live workspaces must stay empty until a merchant imports data.
-
-## Implemented locally
-
-- Supabase-authenticated merchant workspace with merchant-scoped reads.
-- CSV bill import and manual or photo-assisted inventory entry.
-- Photo extraction through OpenRouter with merchant review before save.
-- LangGraph assistant with read-only tools for sales, bills, inventory, customer purchase summaries, item velocity, and stock-out forecasts.
-- Sarvam AI speech generation with browser speech fallback.
-- Legacy seeded demo UI and live demo routes removed; deterministic fixtures remain in tests/evaluations only.
-
-## Setup requirement
-
-Apply `supabase/migrations/20261115_live_inventory_inputs.sql` in the configured Supabase project after the earlier schema migrations. Until that migration is applied, the new bill and inventory tables and RPCs do not exist, so imports, photo saves, and assistant data queries cannot work against that project. The app reports the missing schema instead of substituting sample merchant data.
-
-## Known limits
-
-- A live Supabase project and merchant account are required for end-to-end persistence; local environment credentials cannot apply the pending SQL migration automatically.
-- OpenRouter model availability and free-tier rate limits vary. Configure an account-enabled agent and vision model for dependable use.
-- Inventory photo output is an extraction suggestion and must be reviewed by the merchant.
-- Speech recognition depends on browser/device support; typed questions are available.
-- Legacy deterministic cash-flow fixture evaluation measures 25.3% error against its 10% target. It is a test-only limitation and is not used as live merchant data.
+- Disha reads merchant-supplied supplier bills and transaction exports. The Paytm transaction endpoint is future work; no Paytm connector is used today.
+- Digital collections are not the merchant's full cash position. Cash sales and non-imported expenses are invisible, so the cash-gap card is an estimate, not a balance or promise.
+- Supplier purchase-cycle quantities do not equal sales velocity or on-hand stock. Disha requires at least two invoices containing an item before forecasting that item; products absent from the latest cycle are surfaced separately.
+- Bill OCR can misread handwriting, units or decimal points. Every extraction remains an editable draft until the merchant confirms the invoice and arithmetic checks pass.
+- Customer frequency is derived from successful recorded payment dates. It cannot establish why a customer has not paid. Auto-match requires an exact name or merchant-configured alias and applies only to transactions dated after the Khata entry was created.
+- The supplier caller requires LiveKit credentials, an outbound SIP trunk and a working phone provider. The web app asks for explicit order approval before dialing. Seller changes remain in review until the merchant resolves them.
+- OpenRouter and Sarvam availability, account model access, pricing and rate limits depend on each merchant's configured provider account.
+- Synthetic data is limited to tests and evaluation fixtures; empty merchant workspaces are not preloaded.

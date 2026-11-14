@@ -58,6 +58,7 @@ export default async function Home() {
     khata={khata}
     orders={orders}
     customers={customers}
+    aliases={aliases}
     audit={auditResult.data ?? []}
   />;
 }

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { DishaApiError } from "@/lib/disha/http";
 import { buildPurchaseForecast } from "./purchase-forecast";
-import { customerFrequency, findPaymentsFrom, projectCashFlow, type MerchantTransaction } from "./financials";
+import { customerFrequency, DIGITAL_MODE, findPaymentsFrom, type MerchantTransaction } from "./financials";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const safeError = "Merchant records could not be loaded. Check the Disha merchant growth migration and retry.";
@@ -38,10 +38,10 @@ export function createMerchantDataTools(merchantId: string) {
       return JSON.stringify({customer_name,transaction_count:matches.length,payments:matches.slice(0,20).map(({ts,amount,mode,status})=>({ts,amount,mode,status}))});
     },{name:"find_payments_from",description:"Look up successful recorded payments from a named person. Use the exact customer name and merchant aliases, and return only rows present in this merchant workspace.",schema:z.object({customer_name:z.string().trim().min(1).max(120),from_date:isoDate.optional(),to_date:isoDate.optional()}).strict()}),
     tool(async ({days})=>{
-      const {transactions}=await loadData(merchantId); const end=new Date().toISOString().slice(0,10); const start=new Date(Date.now()-days*86400000).toISOString().slice(0,10);
-      const subset=transactions.filter((tx)=>tx.ts.slice(0,10)>=start&&tx.ts.slice(0,10)<=end);
-      const result=projectCashFlow(0,0,subset,end);
-      return JSON.stringify({days,successful_transactions:result.transaction_count,digital_collections:result.digital_collections_28d,average_daily_digital_collections:result.average_daily_digital_collections,caveat:"Digital collections only; cash sales are not visible. Other expenses are not included."});
+      const {transactions}=await loadData(merchantId); const end=new Date().toISOString().slice(0,10); const start=new Date(Date.now()-(days-1)*86400000).toISOString().slice(0,10);
+      const subset=transactions.filter((tx)=>tx.status==="success"&&DIGITAL_MODE.test(tx.mode)&&tx.ts.slice(0,10)>=start&&tx.ts.slice(0,10)<=end);
+      const collections=subset.reduce((sum,tx)=>sum+Number(tx.amount),0);
+      return JSON.stringify({days,successful_transactions:subset.length,digital_collections:Number(collections.toFixed(2)),average_daily_digital_collections:Number((collections/days).toFixed(2)),caveat:"Digital collections only; cash sales are not visible. Other expenses are not included."});
     },{name:"get_cashflow_summary",description:"Summarize recorded successful digital collections in a recent window. State that cash sales are invisible and this is not a bank balance.",schema:z.object({days:z.number().int().min(1).max(365).default(28)}).strict()}),
     tool(async ({supplier_name})=>{
       const {bills}=await loadData(merchantId); const filter=supplier_name?.trim().toLocaleLowerCase(); const matching=bills.filter((bill)=>!filter||bill.supplier_name.toLocaleLowerCase().includes(filter));

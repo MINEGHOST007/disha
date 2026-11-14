@@ -1,44 +1,54 @@
 # Disha
 
-Disha is a standalone merchant workspace. Merchants bring their own sales bills and inventory; Disha has no Paytm/POS connector and does not seed merchant workspaces with sample records. Test fixtures remain in the test and evaluation scripts only.
+Disha is a standalone merchant growth workspace. Merchants import their own supplier bills and transaction history. It has no Paytm connector today and does not seed merchant workspaces with example records. Supplier purchase history powers next-order estimates; Disha does not claim to know on-hand inventory or SKU sales from payment amounts.
 
-## What works
+## Features
 
-- Email/password sign-in and private Supabase merchant workspaces.
-- Sales bill import from the included CSV template. Bill rows are grouped by date and bill number and saved to the signed-in merchant's workspace.
-- Manual inventory entry or inventory-photo extraction through OpenRouter. Extracted values are editable and require merchant confirmation before saving. Uploaded images are sent to OpenRouter for extraction and are not stored by Disha.
-- A LangGraph tool-calling assistant with read-only, tenant-scoped tools for sales summaries, bill search, inventory, customer visit/spend summaries, sales velocity, and stock-out estimates. Assistant queries and tool names are written to the append-only audit log. The model has no write tools.
-- Sarvam AI Telugu/English text-to-speech. Browser speech remains the fallback if Sarvam is unavailable.
+- **Next bulk order:** import several months of supplier bills by CSV, or photograph/PDF an invoice. Sarvam Vision extracts a draft; the merchant can edit supplier, date, credit days and every line, then confirm arithmetic before saving. The deterministic forecast uses completed purchase cycles, supports quantity edits, prints order sheets, and saves drafts.
+- **Cash-flow estimate:** imports merchant-provided transaction CSV records, uses successful digital collections to estimate collections by supplier credit due date, and labels the result “Digital collections only; cash sales are not visible.” No Paytm API is called.
+- **Khata:** create receivables with an optional due date and optional auto-match to later successful transactions. Partial payments are supported; a fully paid item moves to Closed Khata. The transaction import is idempotent and auto-match honors configured customer aliases.
+- **Customer frequency:** reports median time between successful payment dates and flags a customer for review only when the latest gap is at least 1.5 times typical.
+- **Assistant and voice:** OpenRouter with LangGraph calls read-only, merchant-scoped tools for transaction lookup, collections, purchase history and forecasts, customer frequency, and Khata. Sarvam STT transcribes voice questions; Sarvam TTS speaks answers. Number validation and a safe fallback prevent unsupported amounts from being narrated.
+- **Supplier caller:** after saving and explicitly approving an order, the merchant can start a LiveKit outbound call to the supplier. The voice worker reads the approved list and refers every seller change back for merchant review. Mark the order placed only after seller confirmation.
+- **Audit:** merchant imports, edits, assistant tool calls, Khata changes and order/call actions are recorded in the append-only workspace audit log.
 
 ## Run locally
 
-Use Node.js 22 or newer. The app uses Next.js 16 and React 19.
+Use Node.js 22 or newer.
 
-1. Copy `web/.env.example` to `web/.env.local`. Set your Supabase URL and publishable key. Set `OPENROUTER_API_KEY` and `SARVAM_API_KEY`, or define them in the Windows user environment as `OPENROUTER` and `SARVAM`. Keys stay server-side.
-2. In the Supabase SQL editor, apply every migration in `web/supabase/migrations` in filename order, including `20261115_live_inventory_inputs.sql`. The final migration creates live merchant bill/inventory tables, policies, audit RPCs, and retires old demo mutation functions. It leaves prior legacy workspace-state rows untouched; the current app no longer reads those rows.
-3. From `web`, run:
+1. Copy `.env.example` to `.env.local`. Configure Supabase URL and publishable key, `OPENROUTER_API_KEY`, and `SARVAM_API_KEY`. The server also accepts the local environment aliases `OPENROUTER` and `SARVAM`. Keep credentials out of source control.
+2. Apply the SQL migrations in `supabase/migrations` in filename order. Current merchant features use migrations 115–118. Your Supabase project is confirmed current through migration 117; run `20261118_customer_aliases.sql` for customer aliases and idempotent Khata auto-match before using those features. Do not run a schema dump labeled “context only.”
+3. Install packages and start the web app:
 
-```bash
-npm install
-npm run dev
-```
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-4. Open http://localhost:3000, create an account, and create a store workspace.
-5. Download the bills template, fill it with your own records, then upload it. Add inventory manually or choose a photo, review every extracted row, and confirm the save.
-6. Ask Disha about the records you imported. It calls OpenRouter through LangGraph and shows which read tools it used. Consequential changes are not executed by the query agent.
+4. Open <http://localhost:3000>, create an account and merchant workspace, then import your own supplier-bill and transaction records. CSV templates contain headers only.
+5. To enable the outbound supplier caller, configure `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, and `LIVEKIT_SIP_TRUNK_ID`; your LiveKit account also needs an outbound SIP provider/trunk. Start the worker in another terminal:
 
-The local environment may select the next free port if 3000 is already occupied. Supabase must be reachable for sign-in and saving merchant records. OpenRouter is required for tool-calling answers and photo extraction; Sarvam is required for provider-generated audio. No service-role database key is required by the app.
+   ```bash
+   npm run caller:dev
+   ```
 
-## Provider configuration
+   Set the same `LIVEKIT_AGENT_NAME` in the web app and worker environment (default `disha-supplier-caller`). Set `SARVAM_CALL_LANGUAGE` to `en-IN` or a supported Sarvam TTS language code.
 
-The sample uses `OPENROUTER_AGENT_MODEL=openrouter/free`, `OPENROUTER_VISION_MODEL=openrouter/free`, `TTS_PROVIDER=sarvam`, and Sarvam `bulbul:v3` with the `shubh` voice. Free OpenRouter routing is rate-limited and model availability can change. Override the model variables with models enabled for your account when needed.
+The workspace remains empty until the merchant imports records. Supabase must be reachable for authentication and persistence. OpenRouter is required for assistant queries; Sarvam is required for OCR, speech transcription and provider-generated narration. A LiveKit outbound SIP trunk and credentials are needed for real telephone calls.
+
+## CSV columns
+
+Supplier purchase bills: `supplier_name,bill_number,bill_date,total_amount,credit_days,item_name,quantity,unit,unit_price,line_total`.
+
+Transactions: `external_id,occurred_at,customer_name,amount,mode,status`. Use ISO timestamps including timezone and status `success`, `failed`, or `pending`. The stable `external_id` makes re-imports safe.
 
 ## Checks
 
 ```bash
 npm test
+npm run lint
 npm run build
 npm run eval
 ```
 
-The engine and scorecard scripts use fixed synthetic fixtures for repeatable testing; those fixtures are not loaded into merchant workspaces. The legacy cash-flow hold-out fixture currently measures 25.3% error against its 10% target and remains a test-only limitation.
+Test and evaluation fixtures are synthetic and are not inserted into merchant workspaces.
