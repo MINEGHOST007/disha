@@ -23,7 +23,10 @@ export async function answerMerchantQuestion(input: { merchantId: string; questi
   const tools = createMerchantDataTools(input.merchantId);
   const model = new ChatOpenRouter({
     apiKey,
-    model: process.env.OPENROUTER_AGENT_MODEL ?? process.env.OPENROUTER_MODEL ?? "openrouter/free",
+    // `openrouter/free` may route to a model that ignores function calls while
+    // returning HTTP 200. Keep the agent on a known tool-capable default and
+    // allow deployments to override it explicitly.
+    model: process.env.OPENROUTER_AGENT_MODEL?.trim() || "openai/gpt-4o-mini",
     temperature: 0,
     maxTokens: 500,
     provider: { sort: "latency", allow_fallbacks: true, data_collection: "deny" },
