@@ -218,13 +218,6 @@ export function MerchantWorkspace(props: Props) {
         <button className="mobile-tab-trigger" type="button" aria-expanded={mobileNavOpen} aria-controls="mobile-feature-menu" onClick={() => setMobileNavOpen((open) => !open)}><span>{tab}</span><span aria-hidden="true">⌄</span></button>
         <div className="merchant-tab-list" id="mobile-feature-menu">{tabs.map((name) => <button type="button" key={name} className={tab === name ? "active" : ""} onClick={() => { setTab(name); setMobileNavOpen(false); }}>{name}</button>)}</div>
       </nav>
-      <section className="merchant-shortcuts" aria-label="Quick actions">
-        <button type="button" onClick={() => setTab("Invoices")}><span className="shortcut-icon">▣</span><strong>Upload bill</strong><small>Scan or import</small></button>
-        <button type="button" onClick={() => setTab("Transactions")}><span className="shortcut-icon">↕</span><strong>Transactions</strong><small>View collections</small></button>
-        <button type="button" onClick={() => setTab("Khata")}><span className="shortcut-icon">₹</span><strong>Khata</strong><small>Track receivables</small></button>
-        <button type="button" onClick={() => setTab("Ask Disha")}><span className="shortcut-icon">✦</span><strong>Ask Disha</strong><small>Get business help</small></button>
-      </section>
-
       {tab === "Orders" && <>
         <section className="merchant-metrics"><article><span>Invoice history</span><strong>{purchaseBills.length}</strong><small>Supplier bills analyzed</small></article><article><span>Next order estimate</span><strong>₹{totals.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</strong><small>{forecast.lines.some(seasonalActiveFor)?"Bills + local event scenario":"Forecast from completed bill cycles"}</small></article><article><span>Needs one more bill</span><strong>{forecast.needs_one_more_bill.length}</strong><small>Not enough purchase cycles yet</small></article><article><span>Open order drafts</span><strong>{visibleOrders.filter((order) => ["draft","approved","calling","needs_review"].includes(order.status)).length}</strong><small>Merchant reviewed</small></article></section>
         <section className="merchant-panel"><div className="merchant-section-heading"><div><p className="merchant-eyebrow">SUPPLIER CALLING</p><h2>{supplierCallMode === "stub" ? "Demo call stub" : "Live supplier calls"}</h2></div><span className="step-pill">{supplierCallMode === "stub" ? "NO CALL PLACED" : "LIVEKIT"}</span></div><p>{supplierCallMode === "stub" ? "The demo records an approved call attempt only. It does not dial or contact your supplier, and it leaves the order approved." : "Disha calls only after approval. Seller changes require your review before the order can be placed."}</p></section>
