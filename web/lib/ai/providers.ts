@@ -3,13 +3,21 @@ import "server-only";
 export type LlmProvider = "openrouter" | "gateway";
 export type TtsProvider = "elevenlabs" | "sarvam";
 
+function openRouterKey() {
+  return process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER;
+}
+
+function sarvamKey() {
+  return process.env.SARVAM_API_KEY ?? process.env.SARVAM;
+}
+
 export function selectedLlmProvider(): LlmProvider {
-  return process.env.LLM_PROVIDER === "openrouter" && process.env.OPENROUTER_API_KEY ? "openrouter" : "gateway";
+  return process.env.LLM_PROVIDER === "openrouter" && openRouterKey() ? "openrouter" : "gateway";
 }
 
 export function selectedTtsProvider(): TtsProvider | null {
   if (process.env.TTS_PROVIDER === "elevenlabs" && process.env.ELEVENLABS_API_KEY) return "elevenlabs";
-  if (process.env.TTS_PROVIDER === "sarvam" && process.env.SARVAM_API_KEY) return "sarvam";
+  if (process.env.TTS_PROVIDER === "sarvam" && sarvamKey()) return "sarvam";
   return null;
 }
 
@@ -42,7 +50,7 @@ export async function synthesizeSpeech(input: { text: string; language: "en" | "
       if (body.byteLength === 0 || body.byteLength > 10_000_000) throw new Error("ElevenLabs audio size is invalid");
       return { body, contentType: "audio/mpeg", provider };
     }
-    const response = await fetch("https://api.sarvam.ai/text-to-speech", { method: "POST", signal: controller.signal, headers: { "api-subscription-key": process.env.SARVAM_API_KEY!, "Content-Type": "application/json" }, body: JSON.stringify({ inputs: [input.text], target_language_code: input.language === "te" ? "te-IN" : "en-IN", speaker: process.env.SARVAM_SPEAKER ?? "meera", model: process.env.SARVAM_TTS_MODEL ?? "bulbul:v2" }) });
+    const response = await fetch("https://api.sarvam.ai/text-to-speech", { method: "POST", signal: controller.signal, headers: { "api-subscription-key": sarvamKey()!, "Content-Type": "application/json" }, body: JSON.stringify({ inputs: [input.text], target_language_code: input.language === "te" ? "te-IN" : "en-IN", speaker: process.env.SARVAM_SPEAKER ?? "meera", model: process.env.SARVAM_TTS_MODEL ?? "bulbul:v2" }) });
     if (!response.ok) throw new Error(`Sarvam request failed: ${response.status}`);
     const payload = await response.json() as { audios?: string[] };
     const encoded = payload.audios?.[0];
