@@ -49,6 +49,7 @@ export default async function Home() {
   const customers = customerFrequency(transactions, aliases, asOfDate);
   return <MerchantWorkspace
     merchantName={merchantResult.data?.name ?? "Your store"}
+    supplierCallMode={process.env.LIVEKIT_MODE?.trim().toLowerCase() === "live" ? "live" : "stub"}
     schemaReady={schemaReady}
     role={workspace.role}
     purchaseBills={purchaseBills}

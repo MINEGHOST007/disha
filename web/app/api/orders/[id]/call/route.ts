@@ -10,9 +10,15 @@ export const dynamic="force-dynamic";
 export async function POST(_request:Request,context:{params:Promise<{id:string}>}){
   try{
     await requireRole("manager");const {id}=await context.params;if(!z.string().uuid().safeParse(id).success)throw new DishaApiError("Order draft not found.",404);
+    const supabase=await createClient();
+    if(process.env.LIVEKIT_MODE?.trim().toLowerCase()!=="live"){
+      const {data,error}=await supabase.rpc("disha_log_supplier_call_stub",{p_order:id});
+      if(error||!data)throw new DishaApiError("The demo call stub needs migration 120 and an approved order with a supplier phone.",error?.code==="42501"?403:503);
+      return NextResponse.json({status:"demo_stub",contacted:false,order:data},{headers:{"Cache-Control":"no-store"}});
+    }
     const url=process.env.LIVEKIT_URL?.trim();const key=process.env.LIVEKIT_API_KEY?.trim();const secret=process.env.LIVEKIT_API_SECRET?.trim();const trunk=process.env.LIVEKIT_SIP_TRUNK_ID?.trim();
     if(!url||!key||!secret||!trunk)throw new DishaApiError("Supplier calling needs LIVEKIT_URL, API key, API secret and a configured outbound SIP trunk.",503);
-    const supabase=await createClient();const {data,error}=await supabase.rpc("disha_start_supplier_call",{p_order:id});
+    const {data,error}=await supabase.rpc("disha_start_supplier_call",{p_order:id});
     if(error||!data||typeof data!=="object")throw new DishaApiError("Only a reviewed and approved draft with a supplier phone can be called.",400);
     const payload=data as {order?:{id:string;supplier_name:string;supplier_phone:string;order_total:number};lines?:Array<{item_name:string;quantity:number;unit:string;unit_price:number;line_total:number}>};
     const order=payload.order;const lines=payload.lines??[];if(!order?.supplier_phone||!lines.length)throw new DishaApiError("The approved order has no dialable supplier or items.",400);
