@@ -16,7 +16,18 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext | null> {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (error) throw new DishaApiError("Workspace access could not be checked.", 503);
+  if (error) {
+    console.error("Supabase workspace membership query failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    if (error.code === "PGRST205") {
+      throw new DishaApiError("Disha database schema is not installed. Run the base schema and migrations in Supabase before signing in.", 503);
+    }
+    throw new DishaApiError("Workspace access could not be checked.", 503);
+  }
   if (!membership) return null;
   return { userId: user.id, merchantId: membership.merchant_id, role: membership.role as MerchantRole };
 }

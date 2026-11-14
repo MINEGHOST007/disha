@@ -1,9 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function WorkspaceOnboardingForm() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +27,8 @@ export function WorkspaceOnboardingForm() {
       setError("We could not create your workspace. Please try again.");
       return;
     }
-    window.location.assign("/");
+    router.replace("/");
+    router.refresh();
   }
 
   return (
@@ -38,7 +41,7 @@ export function WorkspaceOnboardingForm() {
         <input id="shop-name" autoComplete="organization" maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Suresh General Store" />
         {error && <p className="onboarding-error" role="alert">{error}</p>}
         <button type="submit" disabled={busy}>{busy ? "Creating workspace…" : "Create workspace"}</button>
-        <p className="onboarding-note">This initializes an isolated sandbox. Live POS and supplier connections can be added later.</p>
+        <p className="onboarding-note">This creates your private merchant workspace. You can import your bills and add inventory after setup.</p>
       </form>
     </main>
   );

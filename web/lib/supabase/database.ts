@@ -3,6 +3,18 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      disha_merchants: {
+        Row: { id: string; name: string; locale: string; timezone: string; currency: string; status: "active" | "suspended"; created_at: string; updated_at: string };
+        Insert: { id?: string; name: string; locale?: string; timezone?: string; currency?: string; status?: "active" | "suspended"; created_at?: string; updated_at?: string };
+        Update: { name?: string; locale?: string; timezone?: string; currency?: string; status?: "active" | "suspended"; updated_at?: string };
+        Relationships: [];
+      };
+      disha_merchant_members: {
+        Row: { merchant_id: string; user_id: string; role: "owner" | "manager" | "staff"; created_at: string; updated_at: string };
+        Insert: { merchant_id: string; user_id: string; role?: "owner" | "manager" | "staff"; created_at?: string; updated_at?: string };
+        Update: { role?: "owner" | "manager"; updated_at?: string };
+        Relationships: [];
+      };
       disha_demo_state: {
         Row: { id: string; payload: Json; audit_cursor: number; updated_at: string; merchant_id: string | null };
         Insert: { id: string; payload: Json; audit_cursor?: number; updated_at?: string; merchant_id?: string | null };
@@ -13,6 +25,78 @@ export type Database = {
         Row: { merchant_id: string; payload: Json; updated_at: string };
         Insert: { merchant_id: string; payload?: Json; updated_at?: string };
         Update: { payload?: Json; updated_at?: string };
+        Relationships: [];
+      };
+      disha_store_bills: {
+        Row: { id: string; merchant_id: string; bill_number: string; bill_date: string; customer_name: string | null; total_amount: number; payment_mode: string | null; items: Json; source: "csv" | "manual"; created_at: string };
+        Insert: { id?: string; merchant_id: string; bill_number: string; bill_date: string; customer_name?: string | null; total_amount: number; payment_mode?: string | null; items: Json; source: "csv" | "manual"; created_at?: string };
+        Update: { customer_name?: string | null; total_amount?: number; payment_mode?: string | null; items?: Json; source?: "csv" | "manual" };
+        Relationships: [];
+      };
+      disha_suppliers: {
+        Row: { id: string; merchant_id: string; name: string; normalized_name: string; created_at: string };
+        Insert: { id?: string; merchant_id: string; name: string; created_at?: string };
+        Update: { name?: string };
+        Relationships: [];
+      };
+      disha_purchase_bills: {
+        Row: { id: string; merchant_id: string; supplier_id: string; bill_number: string; bill_date: string; total_amount: number; credit_days: number; source: "csv" | "sarvam_vision" | "openrouter_vision"; source_file_name: string | null; created_at: string };
+        Insert: { id?: string; merchant_id: string; supplier_id: string; bill_number: string; bill_date: string; total_amount: number; credit_days?: number; source: "csv" | "sarvam_vision" | "openrouter_vision"; source_file_name?: string | null; created_at?: string };
+        Update: { total_amount?: number; credit_days?: number; source?: "csv" | "sarvam_vision" | "openrouter_vision"; source_file_name?: string | null };
+        Relationships: [];
+      };
+      disha_purchase_bill_lines: {
+        Row: { id: string; merchant_id: string; purchase_bill_id: string; item_name: string; normalized_item_name: string; quantity: number; unit: string; unit_price: number; line_total: number };
+        Insert: { id?: string; merchant_id: string; purchase_bill_id: string; item_name: string; quantity: number; unit: string; unit_price: number; line_total: number };
+        Update: never;
+        Relationships: [];
+      };
+      disha_transactions: {
+        Row: { id: string; merchant_id: string; external_id: string; occurred_at: string; customer_name: string; amount: number; mode: string; status: "success" | "failed" | "pending"; created_at: string };
+        Insert: { id?: string; merchant_id: string; external_id: string; occurred_at: string; customer_name: string; amount: number; mode: string; status: "success" | "failed" | "pending"; created_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      disha_customer_aliases: {
+        Row: { id: string; merchant_id: string; customer_name: string; alias: string; created_at: string };
+        Insert: { id?: string; merchant_id: string; customer_name: string; alias: string; created_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      disha_khata_entries: {
+        Row: { id: string; merchant_id: string; customer_name: string; amount: number; paid_amount: number; note: string | null; due_date: string | null; contact_phone: string | null; auto_match: boolean; status: "open" | "partially_paid" | "closed"; created_at: string; closed_at: string | null };
+        Insert: { id?: string; merchant_id: string; customer_name: string; amount: number; paid_amount?: number; note?: string | null; due_date?: string | null; contact_phone?: string | null; auto_match?: boolean; status?: "open" | "partially_paid" | "closed"; created_at?: string; closed_at?: string | null };
+        Update: never;
+        Relationships: [];
+      };
+      disha_khata_allocations: {
+        Row: { id: string; merchant_id: string; entry_id: string; transaction_id: string | null; amount: number; source: "auto_transaction" | "manual"; created_at: string };
+        Insert: { id?: string; merchant_id: string; entry_id: string; transaction_id?: string | null; amount: number; source: "auto_transaction" | "manual"; created_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      disha_tax_obligations: {
+        Row: { id:string; merchant_id:string; tax_type:"GST"; tax_period:string; amount:number; paid_amount:number; due_date:string; payment_reference:string|null; note:string|null; status:"due"|"partially_paid"|"paid"; created_at:string; paid_at:string|null };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      disha_seasonal_order_scenarios: {
+        Row:{id:string;merchant_id:string;state:string;district:string;festival_name:string;event_date:string;uplift_percent:number;source:"merchant_estimate"|"merchant_history";updated_at:string};
+        Insert:never;
+        Update:never;
+        Relationships:[];
+      };
+      disha_order_drafts: {
+        Row: { id: string; merchant_id: string; supplier_name: string; supplier_phone: string | null; order_date: string | null; status: "draft" | "approved" | "calling" | "placed" | "needs_review" | "cancelled"; order_total: number; call_room: string | null; call_status: string | null; seller_confirmation: string | null; approved_at: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; merchant_id: string; supplier_name: string; supplier_phone?: string | null; order_date?: string | null; status?: "draft" | "approved" | "calling" | "placed" | "needs_review" | "cancelled"; order_total?: number; call_room?: string | null; call_status?: string | null; seller_confirmation?: string | null; approved_at?: string | null; created_at?: string; updated_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      disha_order_draft_lines: {
+        Row: { id: string; merchant_id: string; order_id: string; item_name: string; quantity: number; unit: string; unit_price: number; line_total: number };
+        Insert: { id?: string; merchant_id: string; order_id: string; item_name: string; quantity: number; unit: string; unit_price: number; line_total: number };
+        Update: never;
         Relationships: [];
       };
       disha_proposals: {
@@ -51,6 +135,21 @@ export type Database = {
       disha_create_workspace: { Args: { p_name: string }; Returns: string };
       disha_update_workspace_state: { Args: { p_merchant_id: string; p_patch: Json; p_tool: string }; Returns: Json };
       disha_resolve_workspace_proposal: { Args: { p_merchant_id: string; p_proposal_id: string; p_decision: string; p_language?: string; p_message_text?: string | null; p_reason?: string | null }; Returns: Json };
+      disha_log_agent_query: { Args: { p_tools: Json; p_language: string }; Returns: undefined };
+      disha_import_purchase_bills: { Args: { p_bills: Json }; Returns: number };
+      disha_import_store_bills: { Args: { p_bills: Json }; Returns: number };
+      disha_import_transactions: { Args: { p_rows: Json }; Returns: number };
+      disha_create_khata: { Args: { p_customer: string; p_amount: number; p_due: string | null; p_auto: boolean; p_note: string | null }; Returns: string };
+      disha_create_khata_with_phone: { Args: { p_customer: string; p_amount: number; p_due: string | null; p_auto: boolean; p_note: string | null; p_phone: string | null }; Returns: string };
+      disha_create_tax_obligation: { Args: { p_period:string; p_amount:number; p_due:string; p_note?:string|null }; Returns:string };
+      disha_record_tax_payment: { Args: { p_id:string; p_amount?:number|null; p_reference?:string|null }; Returns:Json };
+      disha_save_seasonal_order_scenario: { Args: { p_state:string; p_district:string; p_festival:string; p_event_date:string; p_uplift_percent:number }; Returns:Json };
+      disha_settle_khata: { Args: { p_entry: string; p_amount: number | null }; Returns: Json };
+      disha_save_order_draft: { Args: { p_supplier: string; p_phone: string | null; p_order_date: string | null; p_lines: Json; p_approve?: boolean }; Returns: string };
+      disha_approve_order: { Args: { p_order: string }; Returns: Json };
+      disha_start_supplier_call: { Args: { p_order: string }; Returns: Json };
+      disha_record_supplier_call: { Args: { p_order: string; p_result: string; p_confirmation: string }; Returns: Json };
+      disha_save_customer_alias: { Args: { p_customer: string; p_alias: string }; Returns: string };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

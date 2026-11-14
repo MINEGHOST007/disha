@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { allowedNumbers, forecastAllSkus, getAllCustomerSegments, getCustomerSegments, isDigitSwap, predictStockout, projectCashFlow, reconcileBills, reconcileDay, reconcileSeededWindow, segmentCustomers, topCandidates, validateNarration } from "./engines";
 import { generateSeedData, seededGheeUnitsSold28Days } from "./seed";
 import { buildBriefingCards } from "./disha/briefing";
-import { classifyIntent, parseStockChange, routeSignal, runDemoTool, TOOL_REGISTRY } from "./agent";
+import { TOOL_REGISTRY } from "./agent";
+import { classifyIntent, parseStockChange, routeSignal, runDemoTool } from "../scripts/fixtures/legacy-agent";
 import { canTransition } from "./disha/state-machine";
 
 describe("verified briefing narration", () => {
@@ -36,10 +37,13 @@ describe("Disha SRS acceptance cases", () => {
     expect(predictStockout(5, 72, 2, 1.5).velocity).toBeCloseTo(72 * 1.5 / 28);
     expect(predictStockout(5, 72, 2, 1.5).daysLeft).toBeLessThan(predictStockout(5).daysLeft);
   });
-  it("routes every signal deterministically and exposes all seven named tools", () => {
+  it("keeps deterministic signal routing and exposes the live merchant data tools", () => {
     expect(routeSignal("daily_run")).toEqual(["reconcile_day", "get_customer_segments", "predict_stockout"]);
     expect(routeSignal("daily_run")).toEqual(routeSignal("daily_run"));
-    expect(TOOL_REGISTRY).toHaveLength(7);
+    expect(TOOL_REGISTRY).toHaveLength(6);
+    expect(TOOL_REGISTRY.map((tool) => tool.name)).toEqual(expect.arrayContaining([
+      "get_sales_summary", "search_bills", "get_inventory", "get_customer_purchase_summary", "get_item_sales_velocity", "calculate_stockout_forecast",
+    ]));
     expect(runDemoTool("project_cash_flow")).toMatchObject({ status: "ready", days: 30 });
     expect(projectCashFlow().series).toHaveLength(30);
   });

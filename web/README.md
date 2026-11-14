@@ -1,50 +1,54 @@
 # Disha
 
-A proactive copilot for a kirana shop. The deterministic engines remain the source of truth for every number, while the LLM only narrates verified facts. The interface is intentionally labelled **Sandbox data** until live merchant adapters are configured.
+Disha is a standalone merchant growth workspace. Merchants import their own supplier bills and transaction history. It has no Paytm connector today and does not seed merchant workspaces with example records. Supplier purchase history powers next-order estimates; Disha does not claim to know on-hand inventory or SKU sales from payment amounts.
 
-## AI provider configuration
+## Features
 
-The server supports provider factories so the app can switch providers without changing routes:
-
-- LLM: `LLM_PROVIDER=gateway` (default) or `LLM_PROVIDER=openrouter`, with `GATEWAY_MODEL` or `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`.
-- TTS: `TTS_PROVIDER=elevenlabs` with `ELEVENLABS_API_KEY`/`ELEVENLABS_VOICE_ID`, or `TTS_PROVIDER=sarvam` with `SARVAM_API_KEY` and optional `SARVAM_SPEAKER`.
-- `POST /api/narrate` uses the selected LLM and keeps deterministic validation plus fallback text.
-- `POST /api/tts` accepts `{ "text": "...", "language": "en" | "te" }` and returns audio from the selected TTS provider.
-
-Provider keys are server-only. If an optional provider is not configured, narration falls back safely and TTS returns a clear 503 instead of pretending audio was generated.
+- **Next bulk order:** import several months of supplier bills by CSV, or photograph/PDF an invoice. Sarvam Vision extracts a draft; the merchant can edit supplier, date, credit days and every line, then confirm arithmetic before saving. The deterministic forecast uses completed purchase cycles, supports quantity edits, prints order sheets, and saves drafts.
+- **Cash-flow estimate:** imports merchant-provided transaction CSV records, uses successful digital collections to estimate collections by supplier credit due date, and labels the result “Digital collections only; cash sales are not visible.” No Paytm API is called.
+- **Khata:** create receivables with an optional due date and optional auto-match to later successful transactions. Partial payments are supported; a fully paid item moves to Closed Khata. The transaction import is idempotent and auto-match honors configured customer aliases.
+- **Customer frequency:** reports median time between successful payment dates and flags a customer for review only when the latest gap is at least 1.5 times typical.
+- **Assistant and voice:** OpenRouter with LangGraph calls read-only, merchant-scoped tools for transaction lookup, collections, purchase history and forecasts, customer frequency, and Khata. Sarvam STT transcribes voice questions; Sarvam TTS speaks answers. Number validation and a safe fallback prevent unsupported amounts from being narrated.
+- **Supplier caller:** after saving and explicitly approving an order, the merchant can start a LiveKit outbound call to the supplier. The voice worker reads the approved list and refers every seller change back for merchant review. Mark the order placed only after seller confirmation.
+- **Audit:** merchant imports, edits, assistant tool calls, Khata changes and order/call actions are recorded in the append-only workspace audit log.
 
 ## Run locally
 
-```bash
-cd web
-npm install
-npm run dev
-```
+Use Node.js 22 or newer.
 
-Open http://localhost:3000. Seeded analytics and deterministic fallbacks are available without a model call. Supabase-backed actions require the connected project configuration; optional narration uses the Vercel AI Gateway and falls back safely if unavailable.
+1. Copy `.env.example` to `.env.local`. Configure Supabase URL and publishable key, `OPENROUTER_API_KEY`, and `SARVAM_API_KEY`. The server also accepts the local environment aliases `OPENROUTER` and `SARVAM`. The agent defaults to `openai/gpt-4o-mini` for tool calling; set `OPENROUTER_AGENT_MODEL` to another model that supports tools. `OPENROUTER_MODEL` remains for narration, and `OPENROUTER_VISION_MODEL` is for invoice-image fallback. Keep credentials out of source control.
+2. Apply the SQL migrations in `supabase/migrations` in filename order. The connected Supabase project is confirmed through migration 119; apply `20261120_supplier_confirmation_guard.sql` before using seller-call outcome recording. Migrations 115–119 provide purchase bills, merchant transactions, Khata and order workflows, customer aliases, and invoice rounding tolerance. Migration 120 requires seller confirmation for placed/review outcomes. Do not run a schema dump labeled “context only.”
+3. Install packages and start the web app:
+
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+4. Open <http://localhost:3000>, create an account and merchant workspace, then import your own supplier-bill and transaction records. CSV templates contain headers only.
+5. To enable the outbound supplier caller, configure `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, and `LIVEKIT_SIP_TRUNK_ID`; your LiveKit account also needs an outbound SIP provider/trunk. Start the worker in another terminal:
+
+   ```bash
+   npm run caller:dev
+   ```
+
+   Set the same `LIVEKIT_AGENT_NAME` in the web app and worker environment (default `disha-supplier-caller`). Set `SARVAM_CALL_LANGUAGE` to `en-IN` or a supported Sarvam TTS language code.
+
+The workspace remains empty until the merchant imports records. Supabase must be reachable for authentication and persistence. OpenRouter is required for assistant queries; Sarvam is required for OCR, speech transcription and provider-generated narration. A LiveKit outbound SIP trunk and credentials are needed for real telephone calls.
+
+## CSV columns
+
+Supplier purchase bills: `supplier_name,bill_number,bill_date,total_amount,credit_days,item_name,quantity,unit,unit_price,line_total`.
+
+Transactions: `external_id,occurred_at,customer_name,amount,mode,status`. Use ISO timestamps including timezone and status `success`, `failed`, or `pending`. The stable `external_id` makes re-imports safe.
 
 ## Checks
 
 ```bash
 npm test
-npm run seed:check
+npm run lint
+npm run build
 npm run eval
 ```
 
-`seed:check` prints the fixed checksum and the three worked examples. `eval` reports deterministic seed, reconciliation, customer, inventory, voice-intent, narration-safety, and cash-flow hold-out results. It exits non-zero when a scorecard target is missed; the current cash-flow hold-out is above target. See [LIMITATIONS.md](./LIMITATIONS.md) for production constraints.
-
-## 60-second demo
-
-1. Open **Today** and review the three sandbox priorities.
-2. Open **Bills** and inspect the ₹27 digit-swap example (₹96 expected vs ₹69 recorded).
-3. Open **Customers** and review Lakshmi's potentially-at-risk case; reveal the balance only when demonstrating that control.
-4. Open **Stock** and move the demo slider from 5 to 12. The forecast changes from about 1.9 to 4.7 days and the suggested reorder from 24 to 18 jars.
-5. Adjust the optional festival multiplier on **Stock** and see the stock-out forecast respond; it starts off at 1.00×.
-6. Add a synthetic bill on **Stock** and watch sales, inventory, cash-flow, and audit figures update.
-7. Open **Cash flow** to review the 30-day weekday-mean forecast, uncertainty band, and 7-day hold-out result.
-8. Create a reorder draft or review the activity surface to demonstrate the approval flow. No real order or message is sent.
-9. Use **Reset demo** to return to the initial state.
-
-## Data and safety
-
-Every displayed value is synthetic. Never enter real merchant or customer data. Purchasing, messaging, and consequential actions are not connected to external systems. See [LIMITATIONS.md](./LIMITATIONS.md) before presenting this as anything beyond a prototype.
+Test and evaluation fixtures are synthetic and are not inserted into merchant workspaces.
