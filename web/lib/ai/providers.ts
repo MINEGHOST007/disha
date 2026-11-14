@@ -4,11 +4,11 @@ export type LlmProvider = "openrouter" | "gateway";
 export type TtsProvider = "elevenlabs" | "sarvam";
 
 function openRouterKey() {
-  return process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER;
+  return process.env.OPENROUTER_API_KEY?.trim() || process.env.OPENROUTER?.trim();
 }
 
 function sarvamKey() {
-  return process.env.SARVAM_API_KEY ?? process.env.SARVAM;
+  return process.env.SARVAM_API_KEY?.trim() || process.env.SARVAM?.trim();
 }
 
 export function selectedLlmProvider(): LlmProvider {
@@ -22,19 +22,65 @@ export function selectedTtsProvider(): TtsProvider | null {
 }
 
 export async function generateOpenRouterText(input: { system: string; prompt: string; model?: string; timeoutMs?: number }) {
+  const apiKey = openRouterKey();
+  if (!apiKey) throw new Error("OpenRouter is not configured");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? 3000);
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       signal: controller.signal,
-      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "https://disha.app", "X-Title": "Disha" },
-      body: JSON.stringify({ model: input.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini", temperature: 0, messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }], response_format: { type: "json_object" } }),
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "http://localhost:3000", "X-Title": "Disha" },
+      body: JSON.stringify({ model: input.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini", temperature: 0, provider: { sort: "latency", allow_fallbacks: true }, messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }], response_format: { type: "json_object" } }),
     });
     if (!response.ok) throw new Error(`OpenRouter request failed: ${response.status}`);
     const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     return payload.choices?.[0]?.message?.content ?? null;
   } finally { clearTimeout(timeout); }
+}
+
+export async function generateOpenRouterVision(input: {
+  system: string;
+  prompt: string;
+  imageDataUrl: string;
+  model?: string;
+  timeoutMs?: number;
+}) {
+  const apiKey = openRouterKey();
+  if (!apiKey) throw new Error("OpenRouter is not configured");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? 20_000);
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "http://localhost:3000",
+        "X-Title": "Disha",
+      },
+      body: JSON.stringify({
+        model: input.model ?? process.env.OPENROUTER_VISION_MODEL ?? "openrouter/free",
+        temperature: 0,
+        max_tokens: 1200,
+        provider: { sort: "latency", allow_fallbacks: true, data_collection: "deny" },
+        messages: [
+          { role: "system", content: input.system },
+          { role: "user", content: [
+            { type: "text", text: input.prompt },
+            { type: "image_url", image_url: { url: input.imageDataUrl } },
+          ] },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!response.ok) throw new Error(`OpenRouter vision request failed: ${response.status}`);
+    const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    return payload.choices?.[0]?.message?.content ?? null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function synthesizeSpeech(input: { text: string; language: "en" | "te"; voiceId?: string }) {
@@ -50,7 +96,16 @@ export async function synthesizeSpeech(input: { text: string; language: "en" | "
       if (body.byteLength === 0 || body.byteLength > 10_000_000) throw new Error("ElevenLabs audio size is invalid");
       return { body, contentType: "audio/mpeg", provider };
     }
-    const response = await fetch("https://api.sarvam.ai/text-to-speech", { method: "POST", signal: controller.signal, headers: { "api-subscription-key": sarvamKey()!, "Content-Type": "application/json" }, body: JSON.stringify({ inputs: [input.text], target_language_code: input.language === "te" ? "te-IN" : "en-IN", speaker: process.env.SARVAM_SPEAKER ?? "meera", model: process.env.SARVAM_TTS_MODEL ?? "bulbul:v2" }) });
+    const apiKey = sarvamKey();
+    if (!apiKey) throw new Error("Sarvam is not configured");
+    const model = process.env.SARVAM_TTS_MODEL ?? "bulbul:v3";
+    const speaker = process.env.SARVAM_SPEAKER ?? "shubh";
+    const response = await fetch("https://api.sarvam.ai/text-to-speech", {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "api-subscription-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ text: input.text, language_code: input.language === "te" ? "te-IN" : "en-IN", speaker, model, output_audio_codec: "wav" }),
+    });
     if (!response.ok) throw new Error(`Sarvam request failed: ${response.status}`);
     const payload = await response.json() as { audios?: string[] };
     const encoded = payload.audios?.[0];

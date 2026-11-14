@@ -247,12 +247,9 @@ export function projectCashFlow(days = 30, extraBills: import("./disha/types").D
   };
   const forecastFor = (date: string, trainingThrough = shiftDate(date, -1)) => {
     const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
-    const samples = Array.from({ length: 56 }, (_, index) => {
-      const sampleDate = shiftDate(trainingThrough, -index);
-      return { sampleDate, value: dailyNet.get(sampleDate) };
-    })
-      .filter((sample): sample is { sampleDate: string; value: number } => sample.value !== undefined && new Date(`${sample.sampleDate}T00:00:00Z`).getUTCDay() === weekday)
-      .map((sample) => sample.value);
+    const samples = Array.from({ length: 56 }, (_, index) => shiftDate(trainingThrough, -index))
+      .filter((sampleDate) => new Date(`${sampleDate}T00:00:00Z`).getUTCDay() === weekday)
+      .map((sampleDate) => dailyNet.get(sampleDate) ?? 0);
     const mean = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : 0;
     const variance = samples.length > 1 ? samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (samples.length - 1) : 0;
     const margin = 1.28 * Math.sqrt(variance);

@@ -1,4 +1,4 @@
-import { classifyIntent } from "../lib/agent";
+import { classifyIntent } from "./fixtures/legacy-agent";
 import {
   forecastAllSkus,
   getAllCustomerSegments,

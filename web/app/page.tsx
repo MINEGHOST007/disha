@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { DishaDashboard } from "@/components/disha-dashboard";
-import { getDashboardSnapshot } from "@/lib/disha/store";
+import { MerchantWorkspace } from "@/components/merchant-workspace";
+import { buildPurchaseForecast } from "@/lib/merchant/purchase-forecast";
+import { customerFrequency, projectCashFlow } from "@/lib/merchant/financials";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceContext } from "@/lib/supabase/authz";
-import { projectCashFlow } from "@/lib/engines";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +13,51 @@ export default async function Home() {
   if (!user) redirect("/auth");
   const workspace = await getWorkspaceContext();
   if (!workspace) redirect("/onboarding");
-  const snapshot = await getDashboardSnapshot(workspace.merchantId);
-  return (
-    <DishaDashboard
-      initialState={snapshot.state}
-      initialLogs={snapshot.logs}
-      storageAvailable={snapshot.storageAvailable}
-      analytics={snapshot.analytics}
-      initialCashFlow={projectCashFlow(30, snapshot.state.extraBills)}
-    />
-  );
+
+  const [merchantResult, suppliersResult, purchaseBillsResult, purchaseLinesResult, transactionsResult, aliasesResult, khataResult, ordersResult, orderLinesResult, auditResult] = await Promise.all([
+    supabase.from("disha_merchants").select("name").eq("id", workspace.merchantId).maybeSingle(),
+    supabase.from("disha_suppliers").select("id,name").eq("merchant_id", workspace.merchantId).limit(1000),
+    supabase.from("disha_purchase_bills").select("id,supplier_id,bill_number,bill_date,total_amount,credit_days,source,source_file_name").eq("merchant_id", workspace.merchantId).order("bill_date", { ascending: true }).limit(5000),
+    supabase.from("disha_purchase_bill_lines").select("purchase_bill_id,item_name,quantity,unit,unit_price,line_total").eq("merchant_id", workspace.merchantId).limit(10000),
+    supabase.from("disha_transactions").select("id,occurred_at,customer_name,amount,mode,status").eq("merchant_id", workspace.merchantId).order("occurred_at", { ascending: false }).limit(10000),
+    supabase.from("disha_customer_aliases").select("customer_name,alias").eq("merchant_id", workspace.merchantId).limit(5000),
+    supabase.from("disha_khata_entries").select("id,customer_name,amount,paid_amount,note,due_date,auto_match,status,created_at,closed_at").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(5000),
+    supabase.from("disha_order_drafts").select("id,supplier_name,supplier_phone,order_date,status,order_total,call_status,seller_confirmation,created_at").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(200),
+    supabase.from("disha_order_draft_lines").select("order_id,item_name,quantity,unit,unit_price,line_total").eq("merchant_id", workspace.merchantId).limit(5000),
+    supabase.from("disha_audit_log").select("id,created_at,actor,tool,decision,outcome,facts").eq("merchant_id", workspace.merchantId).order("created_at", { ascending: false }).limit(50),
+  ]);
+  const schemaReady = [suppliersResult,purchaseBillsResult,purchaseLinesResult,transactionsResult,aliasesResult,khataResult,ordersResult,orderLinesResult].every((result) => !result.error);
+  const suppliers = new Map((suppliersResult.data ?? []).map((supplier) => [supplier.id, supplier.name]));
+  const linesByBill = new Map<string, typeof purchaseLinesResult.data>();
+  for (const line of purchaseLinesResult.data ?? []) linesByBill.set(line.purchase_bill_id, [...(linesByBill.get(line.purchase_bill_id) ?? []), line]);
+  const purchaseBills = (purchaseBillsResult.data ?? []).map((bill) => ({
+    supplier_name: suppliers.get(bill.supplier_id) ?? "Unknown supplier",
+    bill_number: bill.bill_number,
+    bill_date: bill.bill_date,
+    total_amount: Number(bill.total_amount),
+    credit_days: bill.credit_days,
+    items: (linesByBill.get(bill.id) ?? []).map((line) => ({ name: line.item_name, quantity: Number(line.quantity), unit: line.unit, unit_price: Number(line.unit_price), line_total: Number(line.line_total) })),
+  }));
+  const transactions = (transactionsResult.data ?? []).map((row) => ({ id: row.id, ts: row.occurred_at, customer_name: row.customer_name, amount: Number(row.amount), mode: row.mode, status: row.status }));
+  const aliases = aliasesResult.data ?? [];
+  const khata = (khataResult.data ?? []).map((row) => ({ ...row, amount: Number(row.amount), paid_amount: Number(row.paid_amount) }));
+  const orders = (ordersResult.data ?? []).map((order) => ({ ...order, order_total: Number(order.order_total), lines: (orderLinesResult.data ?? []).filter((line) => line.order_id === order.id).map((line) => ({ ...line, quantity: Number(line.quantity), unit_price: Number(line.unit_price), line_total: Number(line.line_total) })) }));
+  const forecast = buildPurchaseForecast(purchaseBills);
+  const asOfDate = new Date().toISOString().slice(0, 10);
+  const nearestOrder = forecast.lines[0];
+  const cashFlow = projectCashFlow(nearestOrder ? forecast.lines.reduce((sum, line) => sum + line.estimated_order_value, 0) : 0, nearestOrder?.credit_days ?? 7, transactions, asOfDate);
+  const customers = customerFrequency(transactions, aliases, asOfDate);
+  return <MerchantWorkspace
+    merchantName={merchantResult.data?.name ?? "Your store"}
+    schemaReady={schemaReady}
+    role={workspace.role}
+    purchaseBills={purchaseBills}
+    forecast={forecast}
+    transactions={transactions}
+    cashFlow={cashFlow}
+    khata={khata}
+    orders={orders}
+    customers={customers}
+    audit={auditResult.data ?? []}
+  />;
 }

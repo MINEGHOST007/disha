@@ -14,13 +14,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Disha — Your shop, a little more in hand",
-  description: "A calm, proactive kirana shop copilot with inventory scenarios and a synthetic cash-flow forecast. Sandbox data only.",
+  title: "Disha — Merchant growth assistant",
+  description: "A merchant workspace for bills, inventory, and AI-assisted business insights.",
   applicationName: "Disha",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f8f7f2",
+  themeColor: "#002970",
 };
 
 export default function RootLayout({

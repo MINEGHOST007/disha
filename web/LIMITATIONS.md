@@ -1,23 +1,24 @@
-# Disha prototype limitations
+# Disha local integration status
 
-Disha is a synthetic sandbox prototype, not a production merchant assistant. Its deterministic seed contains a 90-day ledger, 30 customer profiles, and 15 SKUs. The approval state, proposals, and append-only audit history persist in the connected Supabase project; the larger ledger and cohort are regenerated from a fixed seed. No action reaches a live ledger, customer, supplier, or payment system.
+Disha is being converted into a standalone merchant workspace. Merchants supply their own bill exports and inventory records; there is no POS, Paytm, or bank connector. Live workspaces must stay empty until a merchant imports data.
 
-## Implemented
+## Implemented locally
 
-- The E1–E5 reconciliation cases: E1–E4 are flagged for review, while E5 is suppressed by its approved discount.
-- Ten at-risk, fifteen active, and five new customers, with the worked Lakshmi example and interval-based segment calculations.
-- Forecasts for all 15 SKUs, including the 72-unit Ghee velocity example and dynamic stock edits.
-- Supabase-backed proposals, explicit approval/rejection, demo reset, and append-only audit history.
-- English and Telugu rule-based intent tests, Telugu digit normalization, and absolute-versus-incremental stock changes.
-- `GET /api/briefing` and `POST /api/narrate`. Narration uses the Vercel AI Gateway with a three-second timeout, structured output, a deterministic template fallback, and numeric validation. Model facts omit customer names and balances.
+- Supabase-authenticated merchant workspace with merchant-scoped reads.
+- CSV bill import and manual or photo-assisted inventory entry.
+- Photo extraction through OpenRouter with merchant review before save.
+- LangGraph assistant with read-only tools for sales, bills, inventory, customer purchase summaries, item velocity, and stock-out forecasts.
+- Sarvam AI speech generation with browser speech fallback.
+- Legacy seeded demo UI and live demo routes removed; deterministic fixtures remain in tests/evaluations only.
 
-## Still limited to the prototype
+## Setup requirement
 
-- Browser speech recognition varies by browser and device; the typed fallback is available, but a cross-browser Telugu speech evaluation has not been completed.
-- The cash-flow forecast is a deterministic synthetic estimate: bill receipts minus inventory cost, without rent, payroll, taxes, or live account balances. The fixed-seed 7-day hold-out error is 25.3%, above the SRS target of 10%; the UI and scorecard report that honestly. It is not a production financial forecast.
-- Festival uplift is a manually selected scenario multiplier, off by default. It is not inferred from a festival calendar or real demand signals.
-- There is no authentication or per-merchant tenant isolation. Supabase state is a shared synthetic demo; do not use real merchant records without adding authentication, tenant-scoped queries, and rate limits.
-- WhatsApp delivery, payment/POS/Paytm integrations, and live customer or supplier data are intentionally not connected.
-- The deterministic evaluation is a fixture acceptance check, not a statistically representative hold-out study.
+Apply `supabase/migrations/20261115_live_inventory_inputs.sql` in the configured Supabase project after the earlier schema migrations. Until that migration is applied, the new bill and inventory tables and RPCs do not exist, so imports, photo saves, and assistant data queries cannot work against that project. The app reports the missing schema instead of substituting sample merchant data.
 
-All displayed data is synthetic. Do not enter real customer information or use this prototype to make purchasing or financial decisions.
+## Known limits
+
+- A live Supabase project and merchant account are required for end-to-end persistence; local environment credentials cannot apply the pending SQL migration automatically.
+- OpenRouter model availability and free-tier rate limits vary. Configure an account-enabled agent and vision model for dependable use.
+- Inventory photo output is an extraction suggestion and must be reviewed by the merchant.
+- Speech recognition depends on browser/device support; typed questions are available.
+- Legacy deterministic cash-flow fixture evaluation measures 25.3% error against its 10% target. It is a test-only limitation and is not used as live merchant data.
