@@ -25,6 +25,16 @@ describe("server AI provider adapters", () => {
     expect(JSON.parse(String(request.body)).provider).toEqual({ sort: "latency", allow_fallbacks: true });
   });
 
+  it("uses the requested temperature for text completions", async () => {
+    vi.stubEnv("OPENROUTER", "test-openrouter-key");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateOpenRouterText({ system: "system", prompt: "facts", temperature: 0.7 });
+    const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(request.body)).temperature).toBe(0.7);
+  });
+
   it("sends inventory photos to the configured OpenRouter vision model as a data URL", async () => {
     vi.stubEnv("OPENROUTER", "test-openrouter-key");
     vi.stubEnv("OPENROUTER_VISION_MODEL", "openrouter/free");

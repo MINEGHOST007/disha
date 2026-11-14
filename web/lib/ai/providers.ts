@@ -21,7 +21,7 @@ export function selectedTtsProvider(): TtsProvider | null {
   return null;
 }
 
-export async function generateOpenRouterText(input: { system: string; prompt: string; model?: string; timeoutMs?: number }) {
+export async function generateOpenRouterText(input: { system: string; prompt: string; model?: string; timeoutMs?: number; temperature?: number }) {
   const apiKey = openRouterKey();
   if (!apiKey) throw new Error("OpenRouter is not configured");
   const controller = new AbortController();
@@ -31,7 +31,7 @@ export async function generateOpenRouterText(input: { system: string; prompt: st
       method: "POST",
       signal: controller.signal,
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "http://localhost:3000", "X-Title": "Disha" },
-      body: JSON.stringify({ model: input.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini", temperature: 0, provider: { sort: "latency", allow_fallbacks: true }, messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }], response_format: { type: "json_object" } }),
+      body: JSON.stringify({ model: input.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini", temperature: input.temperature ?? 0, provider: { sort: "latency", allow_fallbacks: true }, messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }], response_format: { type: "json_object" } }),
     });
     if (!response.ok) throw new Error(`OpenRouter request failed: ${response.status}`);
     const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
